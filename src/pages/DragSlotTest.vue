@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useDrag } from '@vueuse/gesture'
-import { Motion, animate } from 'motion-v'
-import { CHARACTER_ORDER, CHARACTER_NAMES } from '@/types/card'
+import { CHARACTER_ORDER, CHARACTER_NAMES, type DarkRoomChild } from '@/types/card'
 
 // --- Card data (7 cards, one per character) ---
 interface DragCard {
   id: number
-  character: string
+  character: DarkRoomChild
   name: string
   x: number
   y: number
+  z: number
   placed: boolean
   flipped: boolean
 }
@@ -22,13 +22,14 @@ const cards = reactive<DragCard[]>(
     name: CHARACTER_NAMES[char],
     x: 0,
     y: 0,
+    z: 0,
     placed: false,
     flipped: false,
   }))
 )
 
 // --- Slots ---
-const slots = CHARACTER_ORDER.map((char, i) => ({
+const slots = CHARACTER_ORDER.map((char) => ({
   character: char,
   name: CHARACTER_NAMES[char],
   ref: ref<HTMLElement | null>(null),
@@ -37,10 +38,12 @@ const slots = CHARACTER_ORDER.map((char, i) => ({
 
 // --- Drag state ---
 const draggingId = ref<number | null>(null)
-const hoverSlot = ref<string | null>(null)
-
-// --- Set up drag for each card ---
 const cardRefs = ref<Map<number, HTMLElement>>(new Map())
+
+// Base position per card — preserves visual position across drags
+const cardBasePos = new Map<number, { x: number; y: number }>()
+// Z-index counter — last dropped card is always on top
+const topZ = ref(1)
 
 function setCardRef(el: any, id: number) {
   if (el) cardRefs.value.set(id, el as HTMLElement)
@@ -49,57 +52,27 @@ function setCardRef(el: any, id: number) {
 cards.forEach((card) => {
   useDrag(
     (state) => {
-      const { movement, active, last, tap } = state
+      const { movement, active, first, last, tap } = state
 
       if (tap) {
-        // Tap = flip card
         card.flipped = !card.flipped
         return
       }
 
+      if (first) {
+        cardBasePos.set(card.id, { x: card.x, y: card.y })
+        card.z = ++topZ.value
+      }
+
       if (active) {
         draggingId.value = card.id
-        card.x = movement[0]
-        card.y = movement[1]
-
-        // Check slot hover
-        const cardEl = cardRefs.value.get(card.id)
-        if (cardEl) {
-          hoverSlot.value = findOverlappingSlot(cardEl, card.x, card.y)
-        }
+        const base = cardBasePos.get(card.id) ?? { x: 0, y: 0 }
+        card.x = base.x + movement[0]
+        card.y = base.y + movement[1]
       }
 
       if (last) {
         draggingId.value = null
-
-        // Check drop
-        const cardEl = cardRefs.value.get(card.id)
-        if (cardEl) {
-          const slotChar = findOverlappingSlot(cardEl, card.x, card.y)
-          if (slotChar) {
-            // Snap to slot
-            card.placed = true
-            card.x = 0
-            card.y = 0
-          } else {
-            // Spring back to origin
-            animate(
-              { x: card.x, y: card.y },
-              { x: 0, y: 0 },
-              {
-                type: 'spring',
-                stiffness: 400,
-                damping: 25,
-                onUpdate: (v: any) => {
-                  card.x = v.x
-                  card.y = v.y
-                },
-              }
-            )
-          }
-        }
-
-        hoverSlot.value = null
       }
     },
     {
@@ -111,42 +84,10 @@ cards.forEach((card) => {
   )
 })
 
-// --- Find overlapping slot ---
-function findOverlappingSlot(cardEl: HTMLElement, offsetX: number, offsetY: number): string | null {
-  const cardRect = cardEl.getBoundingClientRect()
-  const cardCenter = {
-    x: cardRect.left + cardRect.width / 2 + offsetX,
-    y: cardRect.top + cardRect.height / 2 + offsetY,
-  }
-
-  for (const slot of slots) {
-    if (slot.ref.value && !slot.hasCard.value) {
-      const slotRect = slot.ref.value.getBoundingClientRect()
-      // Expanded hit area (30px padding)
-      const expanded = {
-        left: slotRect.left - 30,
-        right: slotRect.right + 30,
-        top: slotRect.top - 30,
-        bottom: slotRect.bottom + 30,
-      }
-      if (
-        cardCenter.x >= expanded.left &&
-        cardCenter.x <= expanded.right &&
-        cardCenter.y >= expanded.top &&
-        cardCenter.y <= expanded.bottom
-      ) {
-        return slot.character
-      }
-    }
-  }
-  return null
-}
-
 // --- Remove card from slot ---
-function removeFromSlot(card: DragCard) {
+function removeFromSlot(card: DragCard | undefined) {
+  if (!card) return
   card.placed = false
-  card.x = 0
-  card.y = 0
 }
 
 // --- Available (unplaced) cards ---
@@ -166,10 +107,9 @@ const availableCards = computed(() => cards.filter((c) => !c.placed))
         <div
           v-for="slot in slots"
           :key="slot.character"
-          :ref="(el: any) => { if (el) slot.ref = ref(el as HTMLElement) }"
+          :ref="(el: any) => { if (el) slot.ref.value = el as HTMLElement }"
           class="slot"
           :class="{
-            'is-hover': hoverSlot === slot.character,
             'is-filled': slot.hasCard,
           }"
         >
@@ -178,7 +118,7 @@ const availableCards = computed(() => cards.filter((c) => !c.placed))
           <div
             v-if="slot.hasCard"
             class="placed-card"
-            @click="removeFromSlot(cards.find((c) => c.character === slot.character)!)"
+            @click="removeFromSlot(cards.find((c) => c.character === slot.character))"
           >
             <span>{{ slot.name }}</span>
             <span class="remove-hint">tap to remove</span>
@@ -199,7 +139,7 @@ const availableCards = computed(() => cards.filter((c) => !c.placed))
             'is-dragging': draggingId === card.id,
             'is-flipped': card.flipped,
           }"
-          :style="{ transform: `translate(${card.x}px, ${card.y}px)` }"
+          :style="{ transform: `translate(${card.x}px, ${card.y}px)`, zIndex: card.z }"
         >
           <!-- Front -->
           <div class="card-front">
