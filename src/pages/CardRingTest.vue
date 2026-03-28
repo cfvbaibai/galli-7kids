@@ -160,10 +160,22 @@ useDrag(
 // --- Card transform for position in ring ---
 function cardStyle(index: number) {
   const angle = index * CARD_ANGLE
+  // Calculate how far this card is from the front (0 = front, 180 = back)
+  const normalized = (((angle + ringRotation.value) % 360) + 360) % 360
+  const distFromFront = Math.min(normalized, 360 - normalized) // 0..180
+
+  // Opacity: front=1, back=0.25
+  const opacity = 1 - (distFromFront / 180) * 0.75
+  // Blur: front=0, back=2px
+  const blur = (distFromFront / 180) * 2
+  // Scale: front=1, back=0.85
+  const scale = 1 - (distFromFront / 180) * 0.15
+
   return {
     transform: `rotateY(${angle}deg) translateZ(${RADIUS}px)`,
     transformStyle: 'preserve-3d' as const,
-    backfaceVisibility: 'hidden' as const,
+    opacity,
+    filter: blur > 0.1 ? `blur(${blur}px)` : undefined,
   }
 }
 
@@ -188,7 +200,7 @@ function cardClasses(index: number) {
 
     <!-- 3D Ring -->
     <div class="ring-viewport">
-      <div ref="ringRef" class="ring-container" :style="{ transform: `rotateY(${ringRotation}deg)` }">
+      <div ref="ringRef" class="ring-container" :style="{ transform: `rotateX(-15deg) rotateY(${ringRotation}deg)` }">
         <div
           v-for="(card, i) in testCards"
           :key="card.id"
@@ -255,7 +267,8 @@ function cardClasses(index: number) {
   display: flex;
   align-items: center;
   justify-content: center;
-  perspective: 1000px;
+  perspective: 800px;
+  perspective-origin: 50% 35%;
   min-height: 400px;
   overflow: hidden;
   touch-action: pan-y;
@@ -277,6 +290,7 @@ function cardClasses(index: number) {
   left: 0;
   top: 0;
   cursor: grab;
+  transition: opacity 0.15s ease, filter 0.15s ease;
 }
 
 .ring-card:active {
