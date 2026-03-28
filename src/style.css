@@ -1,0 +1,380 @@
+/* Custom fonts - must be first */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Crimson+Pro:ital-weight@400;500;600&700&family=Nunito:wght@400;500;600&display=swap');
+
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: galliWarm --default;
+}
+
+/* ╹────────────────────────────────---------------
+   TACTILE SANCTUARY - Warm Counseling Session UI
+   A warm, intimate space for meaningful therapeutic work
+   ─────────────────────────────────--------------- */
+
+/* ╹────────────────────────────────---------------
+   COLOR SYSTEM: Warm Neutrals & Botanicals
+   Earth tones: terracotta, honey, cream, sage
+   Accents: dusty rose, warm gold
+   ─────────────────────────────────--------------- */
+
+/* Root Variables - Tactile Sanctuary Theme */
+:root {
+  /* Warm cream base */
+  --cream-50: #faf6f1;
+  --cream-100: #f7f0eb;
+  --cream-200: #efe8e0;
+  --cream-300: #ddd5c5;
+
+  /* Earth tones */
+  --terracotta: #c4846c;
+  --terracotta-light: #d4957d;
+  --terracotta-dark: #a86b55;
+  --sage: #8fa68a;
+  --sage-light: #a8b89a;
+  --sage-dark: #6d7a5d;
+
+  /* Warm accents */
+  --honey: #d4a853;
+  --honey-light: #e0c4a5;
+  --dusty-rose: #c48b8b;
+  --dusty-rose-light: #d4a5a5;
+
+  /* Character colors - muted, warm */
+  --char-miser: #b8956e;
+  --char-showoff: #c9a85c;
+  --char-aggressive: #c47a5e;
+  --char-seductress: #c48b8b;
+  --char-gossip: #9db09d;
+  --char-sleepyhead: #8fa5b5;
+  --char-smallone: #a5a08b;
+
+  /* Neutral */
+  --warm-brown: #5c4a3a;
+  --warm-brown-light: #8a7a6a;
+
+  /* Shadows - warm, soft */
+  --shadow-warm: 0 8px 24px rgba(196, 133, 108, 0.15);
+  --shadow-glow: 0 4px 12px rgba(212, 168, 83, 0.25);
+
+  /* Typography */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Nunito', sans-serif;
+  --font-card: 'Crimson Pro', serif;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 2rem;
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ╹────────────────────────────────---------------
+   BASE STYLES
+   ─────────────────────────────────--------------- */
+
+/* Paper texture overlay for entire app */
+.app-surface {
+  position: relative;
+  min-height: 100vh;
+  background:
+    linear-gradient(145deg, var(--cream-100) 0%, var(--cream-200) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+.app-surface::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 20%, var(--honey-light) 0%, transparent 70%);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* Body typography */
+body {
+  font-family: var(--font-body);
+  background-color: var(--cream-100);
+  color: var(--warm-brown);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ╹────────────────────────────────---------------
+   CARD STYLES - Tactile, Hand-drawn Feel
+   ─────────────────────────────────--------------- */
+
+.card-sanctuary {
+  position: relative;
+  background: linear-gradient(135deg, var(--cream-100) 0%, #fff 100%);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 2px 4px rgba(92, 72, 54, 0.1),
+    0 4px 12px rgba(92, 72, 54, 0.15),
+    inset 0 1px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.3s var(--transition-smooth);
+  cursor: pointer;
+}
+
+.card-sanctuary:hover {
+  transform: translateY(-4px) rotate(-1deg);
+  box-shadow:
+    0 8px 20px rgba(92, 72, 54, 0.2),
+    0 12px 30px rgba(92, 72, 54, 0.25),
+    inset 0 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-sanctuary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Card inner - paper texture */
+.card-sanctuary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper-grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper-grain)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  pointer-events: none;
+  border-radius: var(--radius-lg);
+}
+
+/* ╹────────────────────────----------------------------------------
+   CHARACTER SLOT STYLES - Antique Drawer Pulls
+   ┹────────────────────────---------------------------------------- */
+
+.slot-sanctuary {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--cream-200) 0%, var(--cream-100) 100%);
+  border: 1px solid rgba(92, 72, 54, 0.3);
+  border-radius: var(--radius-md);
+  box-shadow:
+    inset 0 2px 4px rgba(92, 72, 54, 0.1),
+    0 1px 2px rgba(92, 72, 54, 0.05);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slot-sanctuary::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  border: 1px dashed rgba(92, 72, 54, 0.4);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+
+.slot-sanctuary.active-drop {
+  background: linear-gradient(180deg, var(--honey-light) 0%, var(--honey) 100%);
+  border-color: var(--honey);
+  transform: scale(1.05);
+  box-shadow:
+    0 0 20px rgba(212, 168, 83, 0.4),
+    0 8px 24px rgba(212, 168, 83, 0.3);
+}
+
+.slot-sanctuary.active-drop::before {
+  border-color: rgba(212, 168, 83, 0.6);
+}
+
+/* ╹────────────────────────----------------------------------------
+   BUTTON STYLES - Soft, Tactile
+   ┹────────────────────────---------------------------------------- */
+
+.btn-sanctuary {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, var(--terracotta-light) 0%, var(--terracotta) 100%);
+  color: white;
+  font-family: var(--font-card);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-full);
+  box-shadow:
+    0 2px 8px rgba(196, 133, 108, 0.3),
+    0 4px 12px rgba(196, 133, 108, 0.2),
+    inset 0 1px 0 rgba(196, 133, 108, 0.1);
+  transition: all 0.3s var(--transition-smooth);
+  cursor: pointer;
+}
+
+.btn-sanctuary:hover {
+  background: linear-gradient(135deg, var(--terracotta) 0%, var(--terracotta-dark) 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 16px rgba(196, 133, 108, 0.4),
+    0 8px 20px rgba(196, 133, 108, 0.3);
+}
+
+.btn-sanctuary:active {
+  transform: translateY(0);
+  box-shadow:
+    0 1px 4px rgba(196, 133, 108, 0.2),
+    0 2px 8px rgba(196, 133, 108, 0.1);
+}
+
+.btn-sanctuary.secondary {
+  background: linear-gradient(135deg, var(--sage-light) 0%, var(--sage) 100%);
+}
+
+.btn-sanctuary.secondary:hover {
+  background: linear-gradient(135deg, var(--sage) 0%, var(--sage-dark) 100%);
+}
+
+.btn-sanctuary.outline {
+  background: transparent;
+  color: var(--warm-brown);
+  border: 1px solid var(--cream-300);
+  box-shadow: none;
+}
+
+.btn-sanctuary.outline:hover {
+  background: var(--cream-200);
+  border-color: var(--terracotta-light);
+}
+
+/* ╹────────────────────────----------------------------------------
+   TYPOGRAPHY UTILITIES
+   ┹────────────────────────---------------------------------------- */
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-card {
+  font-family: var(--font-card);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* ╹────────────────────────----------------------------------------
+   ANIMATIONS - Breathing, Gentle movements
+   ┹────────────────────────---------------------------------------- */
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(212, 168, 83, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(212, 168, 83, 0.6);
+  }
+}
+
+/* Selection breathing animation */
+.breathing {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* Floating animation */
+.floating {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+/* Glow pulse animation */
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ╹────────────────────────----------------------------------------
+   UTILITY CLASSES
+   ┹────────────────────────---------------------------------------- */
+
+/* Text selection disabled */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Smooth scrolling */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* ╹────────────────────────----------------------------------------
+   MOBILE-SPECIFIC STYLES
+   ┹────────────────────────---------------------------------------- */
+
+@media (max-width: 640px) {
+  :root {
+    --radius-lg: 16px;
+  }
+
+  .card-sanctuary {
+    box-shadow:
+      0 1px 3px rgba(92, 72, 54, 0.1),
+      0 2px 6px rgba(92, 72, 54, 0.1);
+  }
+
+  .slot-sanctuary {
+    padding: 0.5rem;
+  }
+}
+
+/* Dark mode - Still warm and cozy for evening sessions */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cream-50: #1a1714;
+    --cream-100: #231f1a;
+    --cream-200: #2d2721;
+    --cream-300: #3d352a;
+    --warm-brown: #e8ddd1;
+    --warm-brown-light: #efe8e0;
+  }
+
+  .app-surface::before {
+    opacity: 0.08;
+  }
+
+  /* Ambient orbs more visible in dark mode */
+  .ambient-orb {
+    opacity: 0.25;
+  }
+}
+
+/* ╹────────────────────────----------------------------------------
+   PRINT STYLES
+   ┹────────────────────────---------------------------------------- */
+
+@media print {
+  .app-surface::before,
+  .card-sanctuary::before {
+    display: none;
+  }
+
+  body {
+    background: white;
+  }
+}
