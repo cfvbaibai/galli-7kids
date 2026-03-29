@@ -61,7 +61,10 @@ let animRaf = 0
 function animateTo(target: number) {
   cancelAnimationFrame(animRaf)
   const start = animatedIndex.value
-  const distance = target - start
+  // Shortest path around the cycle
+  let distance = target - start
+  if (distance > CARD_COUNT / 2) distance -= CARD_COUNT
+  if (distance < -CARD_COUNT / 2) distance += CARD_COUNT
   const duration = 350
   const startTime = performance.now()
 
@@ -76,7 +79,7 @@ function animateTo(target: number) {
 }
 
 function goTo(index: number) {
-  activeIndex.value = Math.max(0, Math.min(CARD_COUNT - 1, index))
+  activeIndex.value = ((index % CARD_COUNT) + CARD_COUNT) % CARD_COUNT
   animateTo(activeIndex.value)
 }
 
@@ -122,14 +125,17 @@ function onPointerUp() {
   let velocity = 0
   if (lastPositions.length >= 2) {
     const n = lastPositions.length
-    const dx = lastPositions[n - 1] - lastPositions[0]
-    const dt = lastTimes[n - 1] - lastTimes[0]
-    if (dt > 0) velocity = -dx / dt * 16 / BASE_OFFSET * 16
+    const recency = performance.now() - lastTimes[n - 1]
+    if (recency < 150) {
+      const dx = lastPositions[n - 1] - lastPositions[0]
+      const dt = lastTimes[n - 1] - lastTimes[0]
+      if (dt > 0) velocity = -dx / dt * 16 / BASE_OFFSET * 16
+    }
   }
 
   const projected = animatedIndex.value + velocity * 8
   const nearest = Math.round(projected)
-  activeIndex.value = Math.max(0, Math.min(CARD_COUNT - 1, nearest))
+  activeIndex.value = ((nearest % CARD_COUNT) + CARD_COUNT) % CARD_COUNT
   animateTo(activeIndex.value)
 }
 
@@ -147,15 +153,17 @@ const visibleIndices = computed(() => {
   const center = Math.round(animatedIndex.value)
   const indices: number[] = []
   for (let offset = -VISIBLE_SIDE; offset <= VISIBLE_SIDE; offset++) {
-    const idx = center + offset
-    if (idx >= 0 && idx < CARD_COUNT) indices.push(idx)
+    indices.push(((center + offset) % CARD_COUNT + CARD_COUNT) % CARD_COUNT)
   }
   return indices
 })
 
 // --- Card style ---
 function cardStyle(index: number) {
-  const offset = index - animatedIndex.value
+  let offset = index - animatedIndex.value
+  // Shortest path around the cycle for visual offset
+  if (offset > CARD_COUNT / 2) offset -= CARD_COUNT
+  if (offset < -CARD_COUNT / 2) offset += CARD_COUNT
   const absOffset = Math.abs(offset)
 
   const x = offset * BASE_OFFSET
@@ -171,6 +179,28 @@ function cardStyle(index: number) {
   }
 }
 
+// --- Shadow (far-side) cards ---
+function shadowCardStyle(index: number) {
+  let offset = index - animatedIndex.value
+  if (offset > CARD_COUNT / 2) offset -= CARD_COUNT
+  if (offset < -CARD_COUNT / 2) offset += CARD_COUNT
+
+  const ro = -offset // reversed direction
+  const absRo = Math.abs(ro)
+
+  const x = ro * BASE_OFFSET
+  const rotateY = ro * 8
+  const scale = (1 - Math.min(absRo, 4) * 0.06) * 0.88
+  const opacity = (1 - Math.min(absRo, 4) * 0.15) * 0.7
+  const zIndex = 50 - Math.round(absRo * 10)
+
+  return {
+    transform: `translateY(-180px) translateZ(-80px) translateX(${x}px) rotateY(${rotateY}deg) scale(${scale})`,
+    opacity: Math.max(0, opacity),
+    zIndex,
+  }
+}
+
 const currentTheme = computed(() => themes[themeStore.activeTheme])
 const activeCard = computed(() => cards[activeIndex.value])
 </script>
@@ -179,7 +209,7 @@ const activeCard = computed(() => cards[activeIndex.value])
   <div class="ring-test" :style="{ background: 'var(--app-bg)', fontFamily: 'var(--font-body)' }">
     <header class="test-header">
       <h1 :style="{ fontFamily: 'var(--font-heading)', color: 'var(--color-text)' }">Card Carousel</h1>
-      <p class="subtitle" :style="{ color: 'var(--color-text-muted)' }">49 Cards · Swipe to browse · Click to flip</p>
+      <p class="subtitle" :style="{ color: 'var(--color-text-muted)' }">49 Cards · Swipe to browse · Click to flip · Cycles endlessly</p>
       <div class="mode-switcher">
         <button
           v-for="mode in colorModes"
@@ -206,6 +236,17 @@ const activeCard = computed(() => cards[activeIndex.value])
       @pointercancel="onPointerUp"
     >
       <div class="carousel-stage">
+        <!-- Far-side shadow cards -->
+        <div
+          v-for="i in visibleIndices"
+          :key="'s-' + i"
+          class="carousel-card carousel-card--shadow"
+          :style="shadowCardStyle(i)"
+        >
+          <div class="shadow-stub"></div>
+        </div>
+
+        <!-- Near-side main cards -->
         <div
           v-for="i in visibleIndices"
           :key="cards[i].id"
@@ -247,14 +288,14 @@ const activeCard = computed(() => cards[activeIndex.value])
 
     <!-- Nav + detail -->
     <div class="bottom-bar">
-      <button class="nav-btn" :disabled="activeIndex === 0" :style="{ color: 'var(--color-text)' }" @click="prev">
+      <button class="nav-btn" :style="{ color: 'var(--color-text)' }" @click="prev">
         &#9664;
       </button>
       <div class="detail-card" :style="{ background: 'var(--color-surface)', color: 'var(--color-text)' }">
         <span class="detail-number">#{{ activeCard?.id }}</span>
         <span class="detail-text">{{ activeCard?.frontText }}</span>
       </div>
-      <button class="nav-btn" :disabled="activeIndex === CARD_COUNT - 1" :style="{ color: 'var(--color-text)' }" @click="next">
+      <button class="nav-btn" :style="{ color: 'var(--color-text)' }" @click="next">
         &#9654;
       </button>
     </div>
@@ -347,6 +388,20 @@ const activeCard = computed(() => cards[activeIndex.value])
   cursor: pointer;
   transition: transform 0.08s ease-out, opacity 0.15s ease;
   transform-style: preserve-3d;
+}
+
+.carousel-card--shadow {
+  pointer-events: none;
+  cursor: default;
+}
+
+.shadow-stub {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--card-radius);
+  background: var(--card-back-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
 }
 
 /* Card flipper */
@@ -511,13 +566,8 @@ const activeCard = computed(() => cards[activeIndex.value])
   font-family: inherit;
 }
 
-.nav-btn:hover:not(:disabled) {
+.nav-btn:hover {
   transform: scale(1.1);
-}
-
-.nav-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
 }
 
 .detail-card {
