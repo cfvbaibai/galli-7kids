@@ -1,244 +1,282 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useDrag } from '@vueuse/gesture'
-import { useEventListener } from '@vueuse/core'
+import { ref, computed, onMounted } from 'vue'
+import { useThemeStore } from '@/stores/theme'
+import { themes } from '@/themes'
+import type { ColorMode } from '@/themes'
+import type { DarkRoomChild } from '@/types/card'
+import { cards } from '@/data/cards'
+import chroma from 'chroma-js'
 
-// --- Test data ---
-const CARD_COUNT = 10
-const RADIUS = 220
-const CARD_ANGLE = 360 / CARD_COUNT
+const themeStore = useThemeStore()
 
-const testCards = Array.from({ length: CARD_COUNT }, (_, i) => ({
-  id: i + 1,
-  text: `Card ${i + 1}`,
-  color: `hsl(${i * 36}, 60%, 80%)`,
-}))
-
-// --- Ring state ---
-const ringRotation = ref(0)
-const baseRotation = ref(0)
-let inertiaRaf = 0
-
-const activeIndex = computed(() => {
-  const r = ringRotation.value
-  if (typeof r !== 'number' || isNaN(r)) return 0
-  const normalized = (((-r) % 360) + 360) % 360
-  const idx = Math.round(normalized / CARD_ANGLE) % CARD_COUNT
-  return Math.max(0, Math.min(CARD_COUNT - 1, idx))
+onMounted(() => {
+  themeStore.init()
 })
 
-// --- Inertia animation via rAF ---
-function startInertia(from: number, velocity: number) {
-  cancelAnimationFrame(inertiaRaf)
-
-  const friction = 0.94 // deceleration per frame (0-1, higher = more coast)
-  let currentRotation = from
-  let currentVelocity = velocity // degrees per frame
-
-  function tick() {
-    currentVelocity *= friction
-    currentRotation += currentVelocity
-
-    ringRotation.value = currentRotation
-
-    // Stop when velocity is negligible
-    if (Math.abs(currentVelocity) < 0.3) {
-      // Snap to nearest card
-      const nearest = Math.round(currentRotation / CARD_ANGLE) * CARD_ANGLE
-      snapTo(nearest)
-      return
-    }
-
-    inertiaRaf = requestAnimationFrame(tick)
-  }
-
-  inertiaRaf = requestAnimationFrame(tick)
+// Character colors
+const charColors: Record<DarkRoomChild, string> = {
+  seductress: '#ddcb2d',
+  smallone: '#dadeda',
+  sleepyhead: '#ab2d2f',
+  showoff: '#1c97b2',
+  aggressive: '#35965c',
+  miser: '#235789',
+  gossip: '#b35c2f',
 }
 
-// Smooth snap to target using ease-out
-function snapTo(target: number) {
-  const start = ringRotation.value
+function charColor(char: DarkRoomChild) {
+  return charColors[char]
+}
+
+function textColorFor(bgHex: string): string {
+  const needsLightText = chroma.contrast(bgHex, 'white') >= 3
+  const lightColor = themeStore.isDark ? 'var(--color-text)' : 'var(--color-background)'
+  const darkColor = themeStore.isDark ? 'var(--color-background)' : 'var(--color-text)'
+  return needsLightText ? lightColor : darkColor
+}
+
+function nameBarStyle(char: DarkRoomChild) {
+  const bg = charColors[char]
+  return { background: bg, color: textColorFor(bg) }
+}
+
+function setColorMode(mode: ColorMode) {
+  themeStore.setColorMode(mode)
+}
+
+const colorModes: { value: ColorMode; label: string }[] = [
+  { value: 'system', label: 'Auto' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+]
+
+// --- Carousel state ---
+const CARD_COUNT = 49
+const activeIndex = ref(0)
+const BASE_OFFSET = 170
+
+const animatedIndex = ref(0)
+let animRaf = 0
+
+function animateTo(target: number) {
+  cancelAnimationFrame(animRaf)
+  const start = animatedIndex.value
   const distance = target - start
-  const duration = 300 // ms
+  const duration = 350
   const startTime = performance.now()
 
   function tick(now: number) {
     const elapsed = now - startTime
     const t = Math.min(elapsed / duration, 1)
-    // Ease-out cubic
     const eased = 1 - Math.pow(1 - t, 3)
-
-    ringRotation.value = start + distance * eased
-
-    if (t < 1) {
-      inertiaRaf = requestAnimationFrame(tick)
-    }
+    animatedIndex.value = start + distance * eased
+    if (t < 1) animRaf = requestAnimationFrame(tick)
   }
-
-  inertiaRaf = requestAnimationFrame(tick)
+  animRaf = requestAnimationFrame(tick)
 }
 
-// --- Stop inertia on any touch/pointer press (before useDrag threshold) ---
-const ringRef = ref<HTMLElement | null>(null)
-useEventListener(ringRef, 'pointerdown', () => {
-  cancelAnimationFrame(inertiaRaf)
-})
+function goTo(index: number) {
+  activeIndex.value = Math.max(0, Math.min(CARD_COUNT - 1, index))
+  animateTo(activeIndex.value)
+}
+
+function prev() { goTo(activeIndex.value - 1) }
+function next() { goTo(activeIndex.value + 1) }
 
 // --- Gesture ---
+let dragStartX = 0
+let dragStartIndex = 0
+let isDragging = false
 const lastPositions: number[] = []
 const lastTimes: number[] = []
 
-useDrag(
-  (state) => {
-    const { movement, active, first, last, xy } = state
+function onPointerDown(e: PointerEvent) {
+  cancelAnimationFrame(animRaf)
+  isDragging = true
+  dragStartX = e.clientX
+  dragStartIndex = animatedIndex.value
+  lastPositions.length = 0
+  lastTimes.length = 0
+  lastPositions.push(e.clientX)
+  lastTimes.push(performance.now())
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+}
 
-    if (first) {
-      cancelAnimationFrame(inertiaRaf)
-      baseRotation.value = ringRotation.value
-      lastPositions.length = 0
-      lastTimes.length = 0
-    }
+function onPointerMove(e: PointerEvent) {
+  if (!isDragging) return
+  const dx = e.clientX - dragStartX
+  animatedIndex.value = dragStartIndex - dx / BASE_OFFSET
 
-    if (active) {
-      ringRotation.value = baseRotation.value + movement[0] * 0.5
-
-      // Track recent positions for velocity calculation
-      lastPositions.push(xy[0])
-      lastTimes.push(performance.now())
-      // Keep only last 5 samples
-      if (lastPositions.length > 5) {
-        lastPositions.shift()
-        lastTimes.shift()
-      }
-    }
-
-    if (last) {
-      // Try library velocity first (vxvy = per-axis velocity in px/ms)
-      // Fall back to manual calculation
-      let velocity = 0
-      const vxvy = (state as any).vxvy as number[] | undefined
-      if (vxvy && typeof vxvy[0] === 'number' && !isNaN(vxvy[0])) {
-        velocity = vxvy[0] * 0.5 * 16 // px/ms → deg/frame
-        console.log('[ring] using library vxvy:', vxvy[0], '→ velocity:', velocity)
-      } else if (lastPositions.length >= 2) {
-        const n = lastPositions.length
-        const dx = lastPositions[n - 1] - lastPositions[0]
-        const dt = lastTimes[n - 1] - lastTimes[0]
-        if (dt > 0) {
-          velocity = (dx / dt) * 16 * 0.5 // px/ms → deg/frame
-        }
-        console.log('[ring] using manual velocity:', velocity, 'from', n, 'samples')
-      }
-
-      console.log('[ring] state keys:', Object.keys(state).filter(k => {
-        const v = (state as any)[k]
-        return typeof v === 'number' || (Array.isArray(v) && v.length > 0 && typeof v[0] === 'number')
-      }))
-
-      console.log('[ring] release:', {
-        currentRotation: ringRotation.value,
-        velocity,
-        samples: lastPositions.length,
-      })
-
-      if (Math.abs(velocity) > 0.5) {
-        startInertia(ringRotation.value, velocity)
-      } else {
-        // Just snap to nearest card
-        const nearest = Math.round(ringRotation.value / CARD_ANGLE) * CARD_ANGLE
-        snapTo(nearest)
-      }
-    }
-  },
-  {
-    domTarget: ringRef,
-    axis: 'x',
-    eventOptions: { passive: false },
+  lastPositions.push(e.clientX)
+  lastTimes.push(performance.now())
+  if (lastPositions.length > 5) {
+    lastPositions.shift()
+    lastTimes.shift()
   }
-)
+}
 
-// --- Card transform for position in ring ---
+function onPointerUp() {
+  if (!isDragging) return
+  isDragging = false
+
+  let velocity = 0
+  if (lastPositions.length >= 2) {
+    const n = lastPositions.length
+    const dx = lastPositions[n - 1] - lastPositions[0]
+    const dt = lastTimes[n - 1] - lastTimes[0]
+    if (dt > 0) velocity = -dx / dt * 16 / BASE_OFFSET * 16
+  }
+
+  const projected = animatedIndex.value + velocity * 8
+  const nearest = Math.round(projected)
+  activeIndex.value = Math.max(0, Math.min(CARD_COUNT - 1, nearest))
+  animateTo(activeIndex.value)
+}
+
+// --- Flip state ---
+const flippedCards = ref<Set<number>>(new Set())
+
+function toggleFlip(id: number) {
+  if (flippedCards.value.has(id)) flippedCards.value.delete(id)
+  else flippedCards.value.add(id)
+}
+
+// --- Visible cards ---
+const VISIBLE_SIDE = 4
+const visibleIndices = computed(() => {
+  const center = Math.round(animatedIndex.value)
+  const indices: number[] = []
+  for (let offset = -VISIBLE_SIDE; offset <= VISIBLE_SIDE; offset++) {
+    const idx = center + offset
+    if (idx >= 0 && idx < CARD_COUNT) indices.push(idx)
+  }
+  return indices
+})
+
+// --- Card style ---
 function cardStyle(index: number) {
-  const angle = index * CARD_ANGLE
-  // Calculate how far this card is from the front (0 = front, 180 = back)
-  const normalized = (((angle + ringRotation.value) % 360) + 360) % 360
-  const distFromFront = Math.min(normalized, 360 - normalized) // 0..180
+  const offset = index - animatedIndex.value
+  const absOffset = Math.abs(offset)
 
-  // Opacity: front=1, back=0.25
-  const opacity = 1 - (distFromFront / 180) * 0.75
-  // Blur: front=0, back=2px
-  const blur = (distFromFront / 180) * 2
-  // Scale: front=1, back=0.85
-  const scale = 1 - (distFromFront / 180) * 0.15
+  const x = offset * BASE_OFFSET
+  const rotateY = offset * -8
+  const scale = 1 - Math.min(absOffset, 4) * 0.08
+  const opacity = 1 - Math.min(absOffset, 4) * 0.22
+  const zIndex = 100 - Math.round(absOffset * 10)
 
   return {
-    transform: `rotateY(${angle}deg) translateZ(${RADIUS}px)`,
-    transformStyle: 'preserve-3d' as const,
-    opacity,
-    filter: blur > 0.1 ? `blur(${blur}px)` : undefined,
+    transform: `translateX(${x}px) rotateY(${rotateY}deg) scale(${scale})`,
+    opacity: Math.max(0, opacity),
+    zIndex,
   }
 }
 
-// --- Card visual prominence based on distance from front ---
-function cardClasses(index: number) {
-  return {
-    'is-active': activeIndex.value === index,
-  }
-}
+const currentTheme = computed(() => themes[themeStore.activeTheme])
+const activeCard = computed(() => cards[activeIndex.value])
 </script>
 
 <template>
-  <div class="ring-test">
+  <div class="ring-test" :style="{ background: 'var(--app-bg)', fontFamily: 'var(--font-body)' }">
     <header class="test-header">
-      <h1>3D Card Ring Test</h1>
-      <p>Drag left/right to rotate the ring</p>
-      <div class="state-panel">
-        <span>Rotation: {{ ringRotation.toFixed(1) }}°</span>
-        <span>Active: Card {{ activeIndex + 1 }}</span>
+      <h1 :style="{ fontFamily: 'var(--font-heading)', color: 'var(--color-text)' }">Card Carousel</h1>
+      <p class="subtitle" :style="{ color: 'var(--color-text-muted)' }">49 Cards · Swipe to browse · Click to flip</p>
+      <div class="mode-switcher">
+        <button
+          v-for="mode in colorModes"
+          :key="mode.value"
+          class="mode-btn"
+          :class="{ active: themeStore.colorMode === mode.value }"
+          :style="{
+            background: themeStore.colorMode === mode.value ? 'var(--color-text)' : 'var(--color-surface)',
+            color: themeStore.colorMode === mode.value ? 'var(--color-background)' : 'var(--color-text)',
+          }"
+          @click="setColorMode(mode.value)"
+        >
+          {{ mode.label }}
+        </button>
       </div>
     </header>
 
-    <!-- 3D Ring -->
-    <div class="ring-viewport">
-      <div ref="ringRef" class="ring-container" :style="{ transform: `rotateX(-15deg) rotateY(${ringRotation}deg)` }">
+    <!-- Carousel -->
+    <div
+      class="carousel-viewport"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
+    >
+      <div class="carousel-stage">
         <div
-          v-for="(card, i) in testCards"
-          :key="card.id"
-          class="ring-card"
-          :class="cardClasses(i)"
+          v-for="i in visibleIndices"
+          :key="cards[i].id"
+          class="carousel-card"
+          :class="{ 'is-active': activeIndex === i }"
           :style="cardStyle(i)"
+          @click.stop="toggleFlip(cards[i].id)"
         >
-          <div class="card-inner" :style="{ background: card.color }">
-            <span class="card-number">{{ card.id }}</span>
-            <span class="card-label">{{ card.text }}</span>
+          <div class="card-flipper" :class="{ 'is-flipped': flippedCards.has(cards[i].id) }">
+            <!-- FRONT -->
+            <div class="card-face card-front" :style="{ background: 'var(--card-front-bg)' }">
+              <div v-if="currentTheme.effects.texture === 'grain'" class="grain"></div>
+              <div class="front-accent" :style="{ background: 'var(--color-primary)' }"></div>
+              <span class="card-num" :style="{ color: 'var(--color-text-muted)' }">{{ cards[i].id }}</span>
+              <p class="front-text" :style="{ fontFamily: 'var(--font-card)', color: 'var(--color-text)' }">
+                {{ cards[i].frontText }}
+              </p>
+              <div class="front-deco" :style="{ borderColor: 'var(--color-text-muted)' }"></div>
+            </div>
+            <!-- BACK -->
+            <div class="card-face card-back" :style="{ background: 'var(--card-back-bg)' }">
+              <div v-if="currentTheme.effects.texture === 'grain'" class="grain"></div>
+              <div class="back-border" :style="{ borderColor: charColor(cards[i].backCharacter) }"></div>
+              <img
+                :src="cards[i].backImage"
+                :alt="cards[i].characterName"
+                class="back-image"
+                loading="lazy"
+                @error="($event.target as HTMLImageElement).style.display = 'none'"
+              />
+              <div class="back-name-bar" :style="nameBarStyle(cards[i].backCharacter)">
+                <span class="back-name">{{ cards[i].characterName }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Active card detail -->
-    <div class="active-detail">
-      <div class="detail-card" :style="{ background: testCards[activeIndex]?.color ?? '#eee' }">
-        <span class="detail-number">#{{ testCards[activeIndex]?.id ?? '?' }}</span>
-        <span class="detail-text">{{ testCards[activeIndex]?.text ?? '...' }}</span>
+    <!-- Nav + detail -->
+    <div class="bottom-bar">
+      <button class="nav-btn" :disabled="activeIndex === 0" :style="{ color: 'var(--color-text)' }" @click="prev">
+        &#9664;
+      </button>
+      <div class="detail-card" :style="{ background: 'var(--color-surface)', color: 'var(--color-text)' }">
+        <span class="detail-number">#{{ activeCard?.id }}</span>
+        <span class="detail-text">{{ activeCard?.frontText }}</span>
       </div>
+      <button class="nav-btn" :disabled="activeIndex === CARD_COUNT - 1" :style="{ color: 'var(--color-text)' }" @click="next">
+        &#9654;
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-track" :style="{ background: 'var(--color-surface)' }">
+      <div class="progress-fill" :style="{ width: `${((activeIndex + 1) / CARD_COUNT) * 100}%`, background: 'var(--color-primary)' }"></div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .ring-test {
-  font-family: 'Nunito', sans-serif;
   min-height: 100vh;
-  background: #faf6f1;
-  color: #3d3629;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.4s ease;
 }
 
 .test-header {
   text-align: center;
-  padding: 1.5rem 1rem 0.5rem;
+  padding: 1rem 1rem 0.5rem;
 }
 
 .test-header h1 {
@@ -246,111 +284,276 @@ function cardClasses(index: number) {
   margin: 0;
 }
 
-.test-header p {
+.subtitle {
   font-size: 0.8rem;
-  opacity: 0.5;
   margin: 0.25rem 0;
 }
 
-.state-panel {
+.mode-switcher {
   display: flex;
   justify-content: center;
-  gap: 1.5rem;
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-  font-family: monospace;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
 }
 
-/* Ring viewport */
-.ring-viewport {
+.mode-btn {
+  padding: 0.3rem 0.8rem;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+}
+
+.mode-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Carousel viewport */
+.carousel-viewport {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  perspective: 800px;
-  perspective-origin: 50% 35%;
+  perspective: 1200px;
   min-height: 400px;
   overflow: hidden;
   touch-action: pan-y;
-}
-
-.ring-container {
-  position: relative;
-  width: 160px;
-  height: 200px;
-  transform-style: preserve-3d;
-  transition: none;
-}
-
-/* Individual card in ring */
-.ring-card {
-  position: absolute;
-  width: 160px;
-  height: 200px;
-  left: 0;
-  top: 0;
   cursor: grab;
-  transition: opacity 0.15s ease, filter 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.ring-card:active {
+.carousel-viewport:active {
   cursor: grabbing;
 }
 
-.card-inner {
+.carousel-stage {
+  position: relative;
+  width: 160px;
+  height: 220px;
+  transform-style: preserve-3d;
+}
+
+/* Individual card */
+.carousel-card {
+  position: absolute;
+  width: 160px;
+  height: 220px;
+  left: 0;
+  top: 0;
+  cursor: pointer;
+  transition: transform 0.08s ease-out, opacity 0.15s ease;
+  transform-style: preserve-3d;
+}
+
+/* Card flipper */
+.card-flipper {
   width: 100%;
   height: 100%;
-  border-radius: 12px;
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
   display: flex;
   flex-direction: column;
+}
+
+.is-active .card-face {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.card-back {
+  transform: rotateY(180deg);
+}
+
+.is-flipped .card-front {
+  transform: rotateY(-180deg);
+}
+
+.is-flipped .card-back {
+  transform: rotateY(0deg);
+  z-index: 1;
+}
+
+/* Front face */
+.card-front {
+  padding: 0.75rem 0.6rem;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border: 2px solid rgba(255, 255, 255, 0.6);
-  transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
-.ring-card.is-active .card-inner {
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
-  border-color: #c4846c;
+.front-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0.7;
 }
 
-.card-number {
-  font-size: 2rem;
+.card-num {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: 0.7rem;
   font-weight: 700;
+  opacity: 0.4;
+}
+
+.front-text {
+  font-size: 0.85rem;
+  text-align: center;
+  line-height: 1.5;
+  z-index: 1;
+  padding: 0.3rem;
+  margin: 0;
+}
+
+.front-deco {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid;
+  border-radius: 50%;
+  opacity: 0.2;
+}
+
+/* Back face */
+.card-back {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.back-border {
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid;
+  border-radius: calc(var(--card-radius) - 2px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.back-image {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 60%;
+  object-fit: cover;
+  border-radius: calc(var(--card-radius) - 4px);
+}
+
+.back-name-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.3rem 0;
+  text-align: center;
+}
+
+.back-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.05em;
+}
+
+/* Grain */
+.grain {
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
   opacity: 0.6;
+  z-index: 2;
 }
 
-.card-label {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-/* Active card detail */
-.active-detail {
-  padding: 1.5rem;
+/* Bottom bar */
+.bottom-bar {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.nav-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.nav-btn:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .detail-card {
-  padding: 1rem 2rem;
-  border-radius: 12px;
+  flex: 1;
+  max-width: 300px;
+  padding: 0.6rem 1rem;
+  border-radius: var(--card-radius);
   display: flex;
   align-items: center;
-  gap: 1rem;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  min-width: 180px;
-  justify-content: center;
+  gap: 0.6rem;
+  box-shadow: var(--card-shadow);
+  text-align: left;
 }
 
 .detail-number {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 .detail-text {
-  font-size: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* Progress bar */
+.progress-track {
+  height: 3px;
+  margin: 0 1rem 1rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
 }
 </style>

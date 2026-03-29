@@ -33,9 +33,9 @@ export const playfulCards: ThemeTokens = {
   },
 
   fonts: {
-    heading: "'Fredoka', sans-serif",
-    body: "'Nunito', sans-serif",
-    card: "'Nunito', sans-serif",
+    heading: "'Fredoka', '思源黑体', sans-serif",
+    body: "'Nunito', '思源黑体', sans-serif",
+    card: "'Nunito', '思源黑体', sans-serif",
   },
 
   effects: {

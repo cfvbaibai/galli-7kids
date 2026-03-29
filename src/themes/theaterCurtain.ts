@@ -33,9 +33,9 @@ export const theaterCurtain: ThemeTokens = {
   },
 
   fonts: {
-    heading: "'Playfair Display', serif",
-    body: "'Lora', serif",
-    card: "'Lora', serif",
+    heading: "'Playfair Display', '思源黑体', serif",
+    body: "'Lora', '思源黑体', serif",
+    card: "'Lora', '思源黑体', serif",
   },
 
   effects: {

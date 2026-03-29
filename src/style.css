@@ -57,9 +57,9 @@
   --shadow-glow: 0 4px 12px rgba(212, 168, 83, 0.25);
 
   /* Typography */
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Nunito', sans-serif;
-  --font-card: 'Crimson Pro', serif;
+  --font-display: 'Fraunces', '思源黑体', Georgia, serif;
+  --font-body: 'Nunito', '思源黑体', sans-serif;
+  --font-card: 'Crimson Pro', '思源黑体', serif;
 
   /* Spacing */
   --space-xs: 0.25rem;
@@ -95,9 +95,9 @@
   --card-selection-ring: #C67B5C;
   --card-selection-glow: rgba(196, 123, 92, 0.4);
 
-  --font-heading: 'Caveat', cursive;
-  --font-body: 'Quicksand', sans-serif;
-  --font-card: 'Crimson Pro', serif;
+  --font-heading: 'Caveat', '思源黑体', cursive;
+  --font-body: 'Quicksand', '思源黑体', sans-serif;
+  --font-card: 'Crimson Pro', '思源黑体', serif;
 
   --effect-texture: grain;
   --app-bg: #F5F0E1;

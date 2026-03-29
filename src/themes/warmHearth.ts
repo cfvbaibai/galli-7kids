@@ -33,9 +33,9 @@ export const warmHearth: ThemeTokens = {
   },
 
   fonts: {
-    heading: "'Caveat', cursive",
-    body: "'Quicksand', sans-serif",
-    card: "'Crimson Pro', serif",
+    heading: "'Caveat', '思源黑体', cursive",
+    body: "'Quicksand', '思源黑体', sans-serif",
+    card: "'Crimson Pro', '思源黑体', serif",
   },
 
   effects: {
