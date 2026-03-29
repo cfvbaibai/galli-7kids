@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { themeNames, themes } from '@/themes'
-import type { ThemeName } from '@/themes'
+import type { ThemeName, ColorMode } from '@/themes'
 import { cards } from '@/data/cards'
 
 const themeStore = useThemeStore()
@@ -20,6 +20,16 @@ onMounted(() => {
 function switchTheme(name: ThemeName) {
   themeStore.applyTheme(name)
 }
+
+function setColorMode(mode: ColorMode) {
+  themeStore.setColorMode(mode)
+}
+
+const colorModes: { value: ColorMode; label: string }[] = [
+  { value: 'system', label: 'Auto' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+]
 
 function toggleFlip(cardId: number) {
   if (flipped.value.has(cardId)) flipped.value.delete(cardId)
@@ -59,7 +69,25 @@ const currentTheme = computed(() => themes[themeStore.activeTheme])
         </button>
       </div>
 
-      <p class="theme-desc">{{ currentTheme.description }}</p>
+      <!-- Color Mode Switcher -->
+      <div class="color-mode-switcher">
+        <button
+          v-for="mode in colorModes"
+          :key="mode.value"
+          class="theme-btn mode-btn"
+          :class="{ active: themeStore.colorMode === mode.value }"
+          :style="{
+            fontFamily: 'var(--font-body)',
+            background: themeStore.colorMode === mode.value ? 'var(--color-text)' : 'var(--color-surface)',
+            color: themeStore.colorMode === mode.value ? 'var(--color-background)' : 'var(--color-text)',
+          }"
+          @click="setColorMode(mode.value)"
+        >
+          {{ mode.label }}
+        </button>
+      </div>
+
+      <p class="theme-desc">{{ currentTheme.description }} {{ themeStore.isDark ? '(Dark)' : '(Light)' }}</p>
     </header>
 
     <!-- Card Preview Area -->
@@ -225,6 +253,19 @@ const currentTheme = computed(() => themes[themeStore.activeTheme])
 
 .theme-btn.active {
   box-shadow: 0 2px 12px var(--card-selection-glow);
+}
+
+.color-mode-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.mode-btn {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
 }
 
 .theme-desc {

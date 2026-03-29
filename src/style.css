@@ -40,13 +40,13 @@
   --dusty-rose-light: #d4a5a5;
 
   /* Character colors - muted, warm */
-  --char-miser: #b8956e;
-  --char-showoff: #c9a85c;
-  --char-aggressive: #c47a5e;
-  --char-seductress: #c48b8b;
-  --char-gossip: #9db09d;
-  --char-sleepyhead: #8fa5b5;
-  --char-smallone: #a5a08b;
+  --char-miser: #235789;
+  --char-showoff: #1c97b2;
+  --char-aggressive: #35965c;
+  --char-seductress: #ddcb2d;
+  --char-gossip: #b35c2f;
+  --char-sleepyhead: #ab2d2f;
+  --char-smallone: #dadeda;
 
   /* Neutral */
   --warm-brown: #5c4a3a;
@@ -369,15 +369,13 @@ body {
 }
 
 /* Dark mode - Still warm and cozy for evening sessions */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --cream-50: #1a1714;
-    --cream-100: #231f1a;
-    --cream-200: #2d2721;
-    --cream-300: #3d352a;
-    --warm-brown: #e8ddd1;
-    --warm-brown-light: #efe8e0;
-  }
+.dark {
+  --cream-50: #1a1714;
+  --cream-100: #231f1a;
+  --cream-200: #2d2721;
+  --cream-300: #3d352a;
+  --warm-brown: #e8ddd1;
+  --warm-brown-light: #efe8e0;
 
   .app-surface::before {
     opacity: 0.08;

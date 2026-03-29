@@ -41,4 +41,26 @@ export const warmHearth: ThemeTokens = {
   effects: {
     texture: 'grain',
   },
+
+  dark: {
+    colors: {
+      primary: '#D4957D',
+      secondary: '#5A4A3A',
+      accent: '#D4A853',
+      background: '#1A1714',
+      surface: '#252019',
+      text: '#E8DDD1',
+      textMuted: '#9A8A7A',
+    },
+    card: {
+      shadow:
+        '0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+      shadowHover:
+        '0 8px 20px rgba(0, 0, 0, 0.4), 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.05)',
+      frontBg: 'linear-gradient(135deg, #252019 0%, #1A1714 100%)',
+      backBg: 'linear-gradient(145deg, #1A1714 0%, #252019 100%)',
+      border: '1px solid rgba(212, 149, 125, 0.15)',
+      selectionGlow: 'rgba(212, 149, 125, 0.35)',
+    },
+  },
 }

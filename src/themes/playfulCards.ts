@@ -41,4 +41,26 @@ export const playfulCards: ThemeTokens = {
   effects: {
     texture: 'none',
   },
+
+  dark: {
+    colors: {
+      primary: '#FFB4A8',
+      secondary: '#3A3545',
+      accent: '#B4FFB4',
+      background: '#1A1520',
+      surface: '#251F2D',
+      text: '#F0E8F5',
+      textMuted: '#9A8AA0',
+    },
+    card: {
+      border: '3px solid rgba(255, 255, 255, 0.1)',
+      shadow:
+        'inset -2px -2px 8px rgba(0, 0, 0, 0.25), 4px 4px 8px rgba(0, 0, 0, 0.3)',
+      shadowHover:
+        'inset -2px -2px 12px rgba(0, 0, 0, 0.3), 6px 6px 16px rgba(0, 0, 0, 0.4)',
+      frontBg: 'linear-gradient(145deg, #251F2D 0%, #1A1520 100%)',
+      backBg: 'linear-gradient(145deg, #1A1520 0%, #251F2D 100%)',
+      selectionGlow: 'rgba(255, 158, 205, 0.4)',
+    },
+  },
 }

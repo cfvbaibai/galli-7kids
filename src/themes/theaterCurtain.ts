@@ -41,4 +41,26 @@ export const theaterCurtain: ThemeTokens = {
   effects: {
     texture: 'grain',
   },
+
+  dark: {
+    colors: {
+      primary: '#D4A574',
+      secondary: '#4A3A28',
+      accent: '#6AABA8',
+      background: '#12100C',
+      surface: '#1C1814',
+      text: '#F0E0CC',
+      textMuted: '#8A7A68',
+    },
+    card: {
+      shadow:
+        '0 2px 8px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3)',
+      shadowHover:
+        '0 6px 20px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.4)',
+      frontBg: 'linear-gradient(135deg, #1C1814 0%, #12100C 100%)',
+      backBg: 'linear-gradient(145deg, #12100C 0%, #1C1814 100%)',
+      border: '1px solid rgba(212, 165, 116, 0.12)',
+      selectionGlow: 'rgba(122, 59, 59, 0.35)',
+    },
+  },
 }
