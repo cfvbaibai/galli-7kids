@@ -1,0 +1,44 @@
+import type { ThemeTokens } from './types'
+
+/**
+ * Theater Curtain — Vintage Analog
+ * Nostalgic, theatrical — feels like stepping into the Galli Theater itself.
+ */
+export const theaterCurtain: ThemeTokens = {
+  name: 'theaterCurtain',
+  nameZh: '剧院幕布',
+  description: '复古优雅，像翻开泛黄的老照片',
+
+  colors: {
+    primary: '#D4A574',
+    secondary: '#F5E6C8',
+    accent: '#4A7B7C',
+    background: '#FAF0E4',
+    surface: '#F0E2D0',
+    text: '#2C1810',
+    textMuted: '#7A6A5A',
+  },
+
+  card: {
+    radius: '8px',
+    border: 'none',
+    shadow:
+      '0 2px 8px rgba(100, 60, 20, 0.15), 0 4px 16px rgba(100, 60, 20, 0.1)',
+    shadowHover:
+      '0 6px 20px rgba(100, 60, 20, 0.25), 0 10px 30px rgba(100, 60, 20, 0.15)',
+    frontBg: 'linear-gradient(135deg, #FAF0E4 0%, #F5E6C8 100%)',
+    backBg: 'linear-gradient(145deg, #E8D5B8 0%, #FAF0E4 100%)',
+    selectionRing: '#7A3B3B',
+    selectionGlow: 'rgba(122, 59, 59, 0.4)',
+  },
+
+  fonts: {
+    heading: "'Playfair Display', serif",
+    body: "'Lora', serif",
+    card: "'Lora', serif",
+  },
+
+  effects: {
+    texture: 'grain',
+  },
+}

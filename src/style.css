@@ -76,6 +76,31 @@
   /* Transitions */
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ── Themed tokens (overwritten by theme store) ── */
+  --color-primary: #C67B5C;
+  --color-secondary: #D4C4A8;
+  --color-accent: #B5651D;
+  --color-background: #F5F0E1;
+  --color-surface: #EFE8E0;
+  --color-text: #3D2B1F;
+  --color-text-muted: #8a7a6a;
+
+  --card-radius: 12px;
+  --card-border: none;
+  --card-shadow: 0 2px 4px rgba(92, 72, 54, 0.1), 0 4px 12px rgba(92, 72, 54, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --card-shadow-hover: 0 8px 20px rgba(92, 72, 54, 0.2), 0 12px 30px rgba(92, 72, 54, 0.25);
+  --card-front-bg: linear-gradient(135deg, #f7f0eb 0%, #ffffff 100%);
+  --card-back-bg: linear-gradient(145deg, #efe8e0 0%, #f7f0eb 100%);
+  --card-selection-ring: #C67B5C;
+  --card-selection-glow: rgba(196, 123, 92, 0.4);
+
+  --font-heading: 'Caveat', cursive;
+  --font-body: 'Quicksand', sans-serif;
+  --font-card: 'Crimson Pro', serif;
+
+  --effect-texture: grain;
+  --app-bg: #F5F0E1;
 }
 
 /* ╹────────────────────────────────---------------

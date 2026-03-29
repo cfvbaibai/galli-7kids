@@ -1,9 +1,9 @@
 # Galli-7Kids 产品需求文档 (PRD)
 
 > **产品名称**: Galli-7Kids 卡牌抽取工具
-> **版本**: v1.0
-> **最后更新**: 2026-03-21
-> **状态**: 草稿
+> **版本**: v2.0
+> **最后更新**: 2026-03-29
+> **状态**: POC 验证完成
 
 ---
 
@@ -105,7 +105,7 @@ Galli 戏剧（Galli Theater）由德国人 Johannes Galli 于 1980 年代创立
 │                                     │
 │         "多情种" (角色名称)          │
 │                                     │
-│     (翻面后可拖拽至对应槽位)          │
+│     (翻面后可自由拖拽)                │
 │                                     │
 └─────────────────────────────────────┘
 ```
@@ -116,11 +116,11 @@ Galli 戏剧（Galli Theater）由德国人 Johannes Galli 于 1980 年代创立
 - 风格：手绘插画、温暖色调、情感化表达
 - 每个角色有专属背景色，便于视觉区分
 
-> **注**: 生产版本正面可能改为插画+文字，POC 阶段仅用纯文字。
+> **注**: 生产版本正面可能改为插画+文字。
 
 ### 3.5 桌面槽位设计
 
-桌面背景图包含 7 个槽位，每个槽位对应一个暗室小孩：
+桌面背景图包含 7 个槽位，每个槽位对应一个暗室小孩，作为视觉参考和场景氛围元素：
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -136,7 +136,7 @@ Galli 戏剧（Galli Theater）由德国人 Johannes Galli 于 1980 年代创立
 │              │ 🗣️  │  │ 💤  │  │ 🌱  │                  │
 │              └─────┘  └─────┘  └─────┘                  │
 │                                                         │
-│         [ 已选卡牌放置区域 / 拖拽交互区域 ]               │
+│         [ 已选卡牌自由放置区域 ]                          │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -144,7 +144,7 @@ Galli 戏剧（Galli Theater）由德国人 Johannes Galli 于 1980 年代创立
 **设计原则**:
 - 槽位视觉风格与暗室小孩性格呼应（颜色/图标）
 - 布局自然融入桌面，不破坏沉浸感
-- 触控友好：槽位区域足够大，便于手指拖放
+- 槽位仅作为视觉装饰，不做槽位吸附或匹配判断
 
 ### 3.2 卡牌数据结构
 
@@ -313,9 +313,9 @@ centered composition with action text space at bottom
     └────────┬────────┘         └────────┬────────┘
              ▼                           ▼
     ┌─────────────────┐         ┌─────────────────┐
-    │ 49张卡牌7x7平铺 │         │ 从49张中随机    │
-    │ 正面朝上展示    │         │ 抽取1张         │
-    │ hover/点击看详情│         └────────┬────────┘
+    │ 3D卡牌圆环      │         │ 从49张中随机    │
+    │ 滑动旋转浏览    │         │ 抽取1张         │
+    │ 点击看详情      │         └────────┬────────┘
     │ 选择1-10张      │                  │
     └────────┬────────┘                  │
              │                           │
@@ -355,17 +355,17 @@ centered composition with action text space at bottom
 **槽位设计**:
 - 槽位以视觉化的方式呈现 7 个暗室小孩（图标/颜色/名称）
 - 槽位分布应自然融入桌面背景，不显突兀
-- 作为拖拽放置的目标区域
+- 作为场景视觉元素，而非拖拽目标
 
 #### 4.2.2 选卡模式模块
 
 | 需求ID | 描述 | 优先级 |
 |--------|------|--------|
 | F-2.1 | 提供两种选卡模式入口：「明牌选卡」「随机选卡」 | P0 |
-| F-2.2 | 明牌模式：49张卡牌以7×7网格平铺展示 | P0 |
-| F-2.3 | 明牌模式：卡牌正面朝上，显示文字内容 | P0 |
-| F-2.4 | 明牌模式：hover显示卡牌详情/放大预览 | P1 |
-| F-2.5 | 明牌模式：点击卡牌可查看正反两面 | P0 |
+| F-2.2 | 明牌模式：49张卡牌以3D圆环排列展示 | P0 |
+| F-2.3 | 明牌模式：滑动旋转圆环浏览卡牌 | P0 |
+| F-2.4 | 明牌模式：正面朝上显示文字，点击查看详情 | P0 |
+| F-2.5 | 明牌模式：前方卡牌清晰突出，后方渐隐 | P1 |
 | F-2.6 | 明牌模式：支持选择1-10张卡牌 | P0 |
 | F-2.7 | 随机模式：从49张卡牌中随机抽取1张 | P0 |
 | F-2.8 | 随机模式：抽取过程具有仪式感动画 | P1 |
@@ -379,15 +379,15 @@ centered composition with action text space at bottom
 | F-3.3 | 一键全部翻至正面 | P0 |
 | F-3.4 | 一键全部翻至反面 | P0 |
 | F-3.5 | 翻牌动画流畅自然 | P1 |
-| F-3.6 | 已翻面的卡牌可拖拽 | P1 |
-| F-3.7 | 卡牌可拖拽至槽位区域 | P1 |
+| F-3.6 | 已翻面的卡牌可自由拖拽 | P1 |
+| F-3.7 | 拖拽为自由放置，卡牌停留在释放位置 | P1 |
 
 **拖拽交互设计**:
 
-> **目的**: 增加互动趣味性，让来访者更主动地参与，而非精确匹配。
+> **目的**: 增加互动趣味性，让来访者更主动地参与。
 
-- 拖拽为**宽松匹配**：不要求精确放置到正确槽位
-- 视觉反馈：拖拽时卡牌轻微放大，接近槽位时槽位高亮
+- 拖拽为**自由放置**：卡牌停留在释放位置，不做槽位吸附
+- 视觉反馈：拖拽时卡牌轻微放大、提升阴影；最近操作的卡牌始终在最上层
 - 不做对错判断：这是一个开放探索过程，由咨询师引导解读
 
 #### 4.2.4 辅助功能
@@ -422,8 +422,8 @@ centered composition with action text space at bottom
 
 | 断点 | 设备 | 布局策略 |
 |------|------|---------|
-| < 640px | 手机 | 单列/流式布局，卡牌缩小 |
-| 640px - 1024px | 平板 | 7×7 网格适配，触控友好 |
+| < 640px | 手机 | 卡牌圆环居中，卡牌缩小 |
+| 640px - 1024px | 平板 | 卡牌圆环适配，触控友好 |
 | > 1024px | 桌面 | 居中显示，最大宽度限制 |
 
 ### 5.3 可访问性
@@ -439,23 +439,25 @@ centered composition with action text space at bottom
 
 ## 6. 技术约束
 
-### 6.1 技术栈建议
+### 6.1 技术栈
 
 ```
 Frontend: Vue 3 + TypeScript + Vite
 Styling: Tailwind CSS (mobile-first 断点)
-Animation: CSS Transitions / GSAP
-State: Pinia / Composables
-Utilities: VueUse + Lodash (主动使用)
+Gesture:  @vueuse/gesture (useDrag — 触控拖拽、滑动旋转)
+Animation: CSS 3D Transforms + rAF 惯性动画
+State:    Pinia / Composables
+Utilities: @vueuse/core + lodash-es
 ```
 
 **工具库使用原则**:
 
 | 库 | 用途 | 使用原则 |
 |---|------|---------|
-| [Pinia](https://pinia.vuejs.org/) | 全局状态管理 | **强烈推荐** - 用于跨组件共享状态（如卡牌选择、游戏阶段等），替代 prop drilling 和 provide/inject |
-| [VueUse](https://vueuse.org/) | Vue 组合式工具函数 | **主动使用** - 优先使用 VueUse 提供的 composables (如 `useDraggable`, `usePointer`, `useEventListener` 等)，避免重复造轮子 |
-| [Lodash](https://lodash.com/) | 通用工具函数 | **主动使用** - 数组/对象操作、防抖节流、随机选取等场景优先使用 Lodash (推荐 tree-shaking: `import { shuffle } from 'lodash-es'`) |
+| [Pinia](https://pinia.vuejs.org/) | 全局状态管理 | 跨组件共享状态（卡牌选择、游戏阶段等） |
+| [@vueuse/gesture](https://gesture.vueuse.org/) | 触控手势识别 | **拖拽和滑动的首选** — `useDrag` 处理触控/鼠标拖拽、tap 识别、运动追踪 |
+| [@vueuse/core](https://vueuse.org/) | Vue 组合式工具函数 | `useEventListener`, `useWindowSize` 等通用 composables |
+| [lodash-es](https://lodash.com/) | 通用工具函数 | `shuffle`, `chunk`, `sample` 等 (tree-shaking) |
 
 **Mobile-First 开发策略**:
 - 从最小屏幕开始设计和开发，逐步增强到大屏
@@ -492,11 +494,12 @@ Utilities: VueUse + Lodash (主动使用)
 ### 7.1 功能验收
 
 - [ ] 可正常进入明牌/随机选卡模式
-- [ ] 明牌模式可正确展示49张卡牌
+- [ ] 明牌模式：3D圆环展示49张卡牌，滑动旋转浏览
 - [ ] 可选择1-10张卡牌并确认
 - [ ] 随机模式可抽取1张卡牌
 - [ ] 已选卡牌可翻面查看
 - [ ] 一键翻面功能正常
+- [ ] 卡牌可自由拖拽放置
 - [ ] 可重新开始选卡流程
 
 ### 7.2 体验验收
@@ -509,11 +512,9 @@ Utilities: VueUse + Lodash (主动使用)
 
 ## 8. 里程碑规划
 
-> **POC 实施细节见**: [POC.md](./POC.md)
-
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| Phase 0 | **POC**: 核心交互验证 | ⬜ 待开发 |
+| Phase 0 | **POC**: 核心交互验证 (3D圆环、自由拖拽) | ✅ 完成 |
 | Phase 1 | 随机选卡模式 | 待开发 |
 | Phase 2 | 视觉优化：场景氛围、动画效果 | 待开发 |
 | Phase 3 | 辅助功能：卡牌对照表、角色说明 | 待开发 |
@@ -522,7 +523,101 @@ Utilities: VueUse + Lodash (主动使用)
 
 ---
 
-## 9. 附录
+## 8.1 POC 验证成果
+
+> Phase 0 技术验证已完成，确认了以下技术方案可行：
+
+### 已验证技术
+
+| 技术 | 验证内容 | 结论 |
+|------|---------|------|
+| `@vueuse/gesture` useDrag | 触控拖拽、滑动旋转、tap 识别 | **推荐** — 完美处理触控手势 |
+| CSS 3D Transforms | 3D卡牌圆环（透视、旋转、深度衰减） | **推荐** — 流畅、视觉效果好 |
+| rAF-based inertia | 滑动旋转惯性动画（摩擦衰减） | **推荐** — 手感自然，易于控制 |
+| Base position tracking | 多次拖拽间保持视觉位置 | **必须** — useDrag movement 从[0,0]开始 |
+
+### 测试页面
+
+| 页面 | URL | 说明 |
+|------|-----|------|
+| 3D 卡牌圆环 | `?test=ring` | 卡牌3D旋转环，滑动浏览、惯性动画 |
+| 自由拖拽 | `?test=drag` | 卡牌自由拖拽、翻牌、z-index 层叠 |
+
+### 关键实现细节
+
+**3D 圆环**:
+- `perspective: 800px` + `rotateX(-15deg)` 俯视视角
+- 深度衰减：前方卡牌清晰/大，后方模糊/小/半透明
+- `pointerdown` 事件立即停止惯性动画
+- 滑动释放后自动吸附到最近卡牌位置
+
+**自由拖拽**:
+- `useDrag` + base position tracking 避免二次拖拽位置跳变
+- z-index 递增计数器：最新拖拽的卡牌始终在最上层
+- 无槽位吸附/匹配：纯自由放置
+
+---
+
+## 9. 设计系统
+
+> Use `/frontend-design` skill for all UI work
+
+### 9.1 色彩系统
+
+```css
+:root {
+  /* Base - warm cream & linen */
+  --base-100: #faf6f1;      /* cream paper */
+  --base-200: #f5ede4;      /* warm linen */
+  --base-300: #e8ddd1;      /* soft sand */
+  --base-content: #3d3629;  /* warm brown text */
+
+  /* Accent - terracotta & sage */
+  --accent-warm: #c4846c;   /* terracotta */
+  --accent-sage: #8fa68a;   /* sage green */
+  --accent-gold: #d4a853;   /* honey gold */
+  --accent-rose: #d4a5a5;   /* dusty rose */
+
+  /* Character colors */
+  --char-miser: #b8956e;    /* warm bronze */
+  --char-showoff: #c9a85c;  /* antique gold */
+  --char-aggressive: #c47a5e; /* terracotta */
+  --char-seductress: #c48b8b; /* dusty rose */
+  --char-gossip: #9db09d;   /* sage */
+  --char-sleepyhead: #8fa5b5; /* dusty blue */
+  --char-smallone: #a5a08b; /* warm sage */
+}
+```
+
+### 9.2 字体
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600&display=swap');
+
+:root {
+  --font-display: 'Fraunces', serif;  /* headlines */
+  --font-body: 'Nunito', sans-serif;  /* body text */
+  --font-card: 'Quicksand', sans-serif; /* card text */
+}
+```
+
+### 9.3 设计要点
+
+| 元素 | 方向 |
+|------|------|
+| **Colors** | 暖色中性 (cream, sand, terracotta) - 忌冷灰 |
+| **Typography** | 圆润友好字体 - 避免通用字体如 Inter, Roboto |
+| **Shapes** | 有机、圆润、略不规则 - 手工感 |
+| **Shadows** | 暖色调、柔和、漫射 |
+| **Animation** | 轻柔、呼吸感、缓动 - 忌突兀 |
+| **Texture** | 细腻噪点、纸质感、柔和晕影 |
+| **Feedback** | 柔和光晕、轻柔脉动 - 安全感 |
+
+---
+
+## 10. 附录
 
 ### 9.1 参考资源
 
@@ -540,7 +635,7 @@ Utilities: VueUse + Lodash (主动使用)
 
 ---
 
-## 10. 变更记录
+## 11. 变更记录
 
 | 日期 | 版本 | 变更内容 | 作者 |
 |------|------|---------|------|
@@ -552,3 +647,4 @@ Utilities: VueUse + Lodash (主动使用)
 | 2026-03-21 | v1.5 | 新增 3.6 AI生成提示词：Gemini Pro 角色卡/行动卡提示词模板 | Claude |
 | 2026-03-21 | v1.6 | 拆分 POC 文档为独立的 POC.md，精简 PRD 内容 | Claude |
 | 2026-03-21 | v1.7 | 明确 Pinia + VueUse + Lodash-ES 为推荐工具库，应主动使用 | Claude |
+| 2026-03-29 | v2.0 | POC 验证完成：3D圆环取代7×7网格、自由拖拽取代槽位吸附、新增 @vueuse/gesture、合并 POC.md 内容、新增设计系统 | Claude |

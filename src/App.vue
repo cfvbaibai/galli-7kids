@@ -6,6 +6,7 @@ import SelectedCardsView from '@/components/SelectedCardsView.vue'
 import SwipeTest from '@/pages/SwipeTest.vue'
 import CardRingTest from '@/pages/CardRingTest.vue'
 import DragSlotTest from '@/pages/DragSlotTest.vue'
+import ThemeTest from '@/pages/ThemeTest.vue'
 
 const store = useCardGameStore()
 
@@ -16,6 +17,7 @@ const testPage = new URLSearchParams(window.location.search).get('test')
   <SwipeTest v-if="testPage === 'swipe'" />
   <CardRingTest v-else-if="testPage === 'ring'" />
   <DragSlotTest v-else-if="testPage === 'drag'" />
+  <ThemeTest v-else-if="testPage === 'theme'" />
   <div v-else class="app-surface">
     <!-- Table Background with Character Slots -->
     <TableBackground class="absolute inset-0 z-0" />
