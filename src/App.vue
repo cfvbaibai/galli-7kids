@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useCardGameStore } from '@/stores/cardGame'
-import CardSelection from '@/components/CardSelection.vue'
+import CardPickingRing from '@/components/CardPickingRing.vue'
 import TableBackground from '@/components/TableBackground.vue'
 import SelectedCardsView from '@/components/SelectedCardsView.vue'
 import SwipeTest from '@/pages/SwipeTest.vue'
@@ -27,7 +27,7 @@ const testPage = new URLSearchParams(window.location.search).get('test')
     <!-- Main Content Layer -->
     <div class="relative z-10 min-h-screen">
       <!-- Phase: Selecting Cards (swipeable card fan) -->
-      <CardSelection v-if="store.gamePhase === 'selecting'" />
+      <CardPickingRing v-if="store.gamePhase === 'selecting'" />
 
       <!-- Phase: Viewing / Interpreting Selected Cards -->
       <SelectedCardsView v-else />
