@@ -41,9 +41,14 @@ const slots = CHARACTER_ORDER.map((char) => ({
   character: char,
   name: CHARACTER_NAMES[char],
   ref: ref<HTMLElement | null>(null),
-  hasCard: computed(() =>
-    dragCards.some((c) => c.placed && c.character === char)
-  ),
+  hasCard: computed(() => {
+    const cardData = dragCards.find((c) => {
+      if (!c.placed) return false
+      const data = store.getCardById(c.id)
+      return data?.backCharacter === char
+    })
+    return !!cardData
+  }),
 }))
 
 // --- Z-index counter ---
@@ -61,11 +66,12 @@ dragCards.forEach((card) => {
       }
 
       if (first) {
+        cardBasePos.set(card.id, { x: card.x, y: card.y })
         card.z = ++topZ.value
       }
 
       if (active) {
-        const base = cardBasePos.get(card.id) ?? { x: card.x, y: card.y }
+        const base = cardBasePos.get(card.id) ?? { x: 0, y: 0 }
         card.x = base.x + movement[0]
         card.y = base.y + movement[1]
       }
@@ -73,8 +79,6 @@ dragCards.forEach((card) => {
       if (last) {
         // Check if card was dropped on a matching slot
         checkSlotDrop(card)
-        // Save final position as base
-        cardBasePos.set(card.id, { x: card.x, y: card.y })
       }
     },
     {
@@ -128,12 +132,11 @@ function checkSlotDrop(card: DragCardState) {
 // --- Remove card from slot ---
 function removeFromSlot(cardId: number) {
   const card = dragCards.find((c) => c.id === cardId)
-  if (card) {
-    card.placed = false
-    card.x = 0
-    card.y = 0
-    cardBasePos.set(card.id, { x: 0, y: 0 })
-  }
+  if (!card) return
+  card.placed = false
+  card.x = 0
+  card.y = 0
+  cardBasePos.set(card.id, { x: 0, y: 0 })
 }
 
 // --- Available (unplaced) cards ---
@@ -192,7 +195,7 @@ onMounted(() => {
           <div
             v-if="slot.hasCard"
             class="placed-card"
-            @click="removeFromSlot(dragCards.find((c) => c.placed && store.getCardById(c.id)?.backCharacter === slot.character)?.id)"
+            @click="removeFromSlot(dragCards.find((c) => c.placed && store.getCardById(c.id)?.backCharacter === slot.character)?.id ?? -1)"
           >
             <span class="placed-name" :style="{ color: 'var(--color-background)' }">{{ slot.name }}</span>
             <span class="remove-hint" :style="{ color: 'var(--color-background)' }">点击移除</span>
