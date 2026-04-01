@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { cards, getCardsGrid } from '@/data/cards'
+import { cards } from '@/data/cards'
+import { shuffle } from 'lodash-es'
 import type { Card, DarkRoomChild } from '@/types/card'
 
 export const useCardGameStore = defineStore('cardGame', () => {
@@ -13,7 +14,6 @@ export const useCardGameStore = defineStore('cardGame', () => {
 
   // Card data
   const allCards = ref<Card[]>(cards)
-  const cardsGrid = computed(() => getCardsGrid())
 
   // Computed
   const selectedCards = computed(() =>
@@ -115,6 +115,14 @@ export const useCardGameStore = defineStore('cardGame', () => {
     resetSelection()
   }
 
+  function shuffleCards() {
+    const selectedSet = new Set(selectedCardIds.value)
+    const selectedCards = allCards.value.filter(c => selectedSet.has(c.id))
+    const unselectedCards = allCards.value.filter(c => !selectedSet.has(c.id))
+    const shuffled = shuffle(unselectedCards)
+    allCards.value = [...selectedCards, ...shuffled]
+  }
+
   return {
     // State
     gamePhase,
@@ -123,7 +131,6 @@ export const useCardGameStore = defineStore('cardGame', () => {
     placedCards,
     draggingCardId,
     allCards,
-    cardsGrid,
 
     // Computed
     selectedCards,
@@ -150,6 +157,7 @@ export const useCardGameStore = defineStore('cardGame', () => {
     startInterpreting,
     resetSelection,
     restart,
+    shuffleCards,
   }
 })
 
