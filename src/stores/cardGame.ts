@@ -93,14 +93,8 @@ export const useCardGameStore = defineStore('cardGame', () => {
 
   function confirmSelection() {
     if (selectedCardIds.value.length >= 1) {
-      gamePhase.value = 'viewing'
-      // Flip all cards to show character when entering viewing phase
-      flipAllCards('back')
+      gamePhase.value = 'interpreting'
     }
-  }
-
-  function startInterpreting() {
-    gamePhase.value = 'interpreting'
   }
 
   function resetSelection() {
@@ -154,7 +148,6 @@ export const useCardGameStore = defineStore('cardGame', () => {
     placeCard,
     removeCardFromSlot,
     confirmSelection,
-    startInterpreting,
     resetSelection,
     restart,
     shuffleCards,
@@ -162,4 +155,4 @@ export const useCardGameStore = defineStore('cardGame', () => {
 })
 
 // Import GamePhase type
-type GamePhase = 'selecting' | 'viewing' | 'interpreting'
+type GamePhase = 'selecting' | 'interpreting'

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useCardGameStore } from '@/stores/cardGame'
 import CardPickingRing from '@/components/CardPickingRing.vue'
-import TableBackground from '@/components/TableBackground.vue'
 import SelectedCardsView from '@/components/SelectedCardsView.vue'
 import SwipeTest from '@/pages/SwipeTest.vue'
 import CardRingTest from '@/pages/CardRingTest.vue'
@@ -21,16 +20,13 @@ const testPage = new URLSearchParams(window.location.search).get('test')
   <ThemeTest v-else-if="testPage === 'theme'" />
   <CardUITest v-else-if="testPage === 'cardui'" />
   <div v-else class="app-surface">
-    <!-- Table Background with Character Slots -->
-    <TableBackground class="absolute inset-0 z-0" />
-
     <!-- Main Content Layer -->
     <div class="relative z-10 min-h-screen">
-      <!-- Phase: Selecting Cards (swipeable card fan) -->
+      <!-- Phase: Selecting Cards -->
       <CardPickingRing v-if="store.gamePhase === 'selecting'" />
 
-      <!-- Phase: Viewing / Interpreting Selected Cards -->
-      <SelectedCardsView v-else />
+      <!-- Phase: Dragging / Interpreting -->
+      <SelectedCardsView v-else-if="store.gamePhase === 'interpreting'" />
     </div>
   </div>
 </template>

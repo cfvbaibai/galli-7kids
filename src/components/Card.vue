@@ -30,7 +30,7 @@ function handleTap() {
 
   if (store.gamePhase === 'selecting') {
     store.toggleCardSelection(props.card.id)
-  } else if (store.gamePhase === 'viewing' || store.gamePhase === 'interpreting') {
+  } else if (store.gamePhase === 'interpreting') {
     store.flipCard(props.card.id)
   }
 }

@@ -1,399 +1,527 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useDrag } from '@vueuse/gesture'
 import { useCardGameStore } from '@/stores/cardGame'
-import { useCardDrag } from '@/composables/useCardDrag'
-import Card from './Card.vue'
-import { CHARACTER_NAMES, CHARACTER_ORDER, type DarkRoomChild } from '@/types/card'
-import type { Card as CardType } from '@/types/card'
+import { useThemeStore } from '@/stores/theme'
+import { CHARACTER_ORDER, CHARACTER_NAMES, type DarkRoomChild } from '@/types/card'
 
 const store = useCardGameStore()
 
-// Responsive card size
-const cardSize = ref<'sm' | 'md' | 'lg'>('md')
+// --- Drag card state (visual positions) ---
+interface DragCardState {
+  id: number
+  x: number
+  y: number
+  z: number
+  placed: boolean
+  flipped: boolean
+}
 
-// Drop zone refs
-const dropZoneRefs = ref<Map<DarkRoomChild, HTMLElement | null>>(new Map())
+// Initialize from store's selected cards
+const dragCards = reactive<DragCardState[]>(
+  store.selectedCards.map((card) => ({
+    id: card.id,
+    x: 0,
+    y: 0,
+    z: 0,
+    placed: false,
+    flipped: false,
+  }))
+)
 
-function setDropZoneRef(character: DarkRoomChild, el: any) {
-  if (el) {
-    dropZoneRefs.value.set(character, el as HTMLElement)
+// Keep in sync if selection changes (shouldn't during this phase, but safe)
+const cardRefs = ref<Map<number, HTMLElement>>(new Map())
+
+function setCardRef(el: any, id: number) {
+  if (el) cardRefs.value.set(id, el as HTMLElement)
+}
+
+// --- Slots ---
+const slots = CHARACTER_ORDER.map((char) => ({
+  character: char,
+  name: CHARACTER_NAMES[char],
+  ref: ref<HTMLElement | null>(null),
+  hasCard: computed(() =>
+    dragCards.some((c) => c.placed && c.character === char)
+  ),
+}))
+
+// --- Z-index counter ---
+const topZ = ref(1)
+
+// --- Set up useDrag for each card ---
+dragCards.forEach((card) => {
+  useDrag(
+    (state) => {
+      const { movement, active, first, last, tap } = state
+
+      if (tap) {
+        card.flipped = !card.flipped
+        return
+      }
+
+      if (first) {
+        card.z = ++topZ.value
+      }
+
+      if (active) {
+        const base = cardBasePos.get(card.id) ?? { x: card.x, y: card.y }
+        card.x = base.x + movement[0]
+        card.y = base.y + movement[1]
+      }
+
+      if (last) {
+        // Check if card was dropped on a matching slot
+        checkSlotDrop(card)
+        // Save final position as base
+        cardBasePos.set(card.id, { x: card.x, y: card.y })
+      }
+    },
+    {
+      domTarget: computed(() => cardRefs.value.get(card.id) || null),
+      filterTaps: true,
+      threshold: 5,
+      eventOptions: { passive: false },
+    }
+  )
+})
+
+// Base position per card — preserves visual position across drags
+const cardBasePos = new Map<number, { x: number; y: number }>()
+
+// --- Slot drop detection ---
+function checkSlotDrop(card: DragCardState) {
+  const cardEl = cardRefs.value.get(card.id)
+  if (!cardEl) return
+
+  const cardRect = cardEl.getBoundingClientRect()
+  const cardCenterX = cardRect.left + cardRect.width / 2
+  const cardCenterY = cardRect.top + cardRect.height / 2
+
+  for (const slot of slots) {
+    const el = slot.ref.value
+    if (!el) continue
+
+    const slotRect = el.getBoundingClientRect()
+    const padding = 20
+
+    if (
+      cardCenterX >= slotRect.left - padding &&
+      cardCenterX <= slotRect.right + padding &&
+      cardCenterY >= slotRect.top - padding &&
+      cardCenterY <= slotRect.bottom + padding
+    ) {
+      // Get the actual card data to check character match
+      const cardData = store.getCardById(card.id)
+      if (cardData && cardData.backCharacter === slot.character) {
+        // Snap card into slot
+        card.placed = true
+        card.x = 0
+        card.y = 0
+        cardBasePos.set(card.id, { x: 0, y: 0 })
+        return
+      }
+    }
   }
 }
 
-// Get drop zones for the composable
-function getDropZones() {
-  return CHARACTER_ORDER.map((character) => ({
-      id: character,
-      element: dropZoneRefs.value.get(character) || null,
-    }))
+// --- Remove card from slot ---
+function removeFromSlot(cardId: number) {
+  const card = dragCards.find((c) => c.id === cardId)
+  if (card) {
+    card.placed = false
+    card.x = 0
+    card.y = 0
+    cardBasePos.set(card.id, { x: 0, y: 0 })
   }
+}
 
-const isViewing = computed(() => store.gamePhase === 'viewing')
-const isInterpreting = computed(() => store.gamePhase === 'interpreting')
-const canDrag = computed(() => isViewing.value || isInterpreting.value)
+// --- Available (unplaced) cards ---
+const availableCards = computed(() => dragCards.filter((c) => !c.placed))
 
-// Use the drag composable
-const {
-  isDragging,
-  draggedCardId,
-  overDropZone,
-  dragPreviewStyle,
-  createDragHandlers,
-  handlePointerMove,
-  handlePointerUp,
-} = useCardDrag({
-  getDropZones,
-  onDragStart: (cardId) => {
-    store.startDragging(cardId)
-  },
-  onDrop: (cardId, zoneId) => {
-    store.placeCard(cardId, zoneId)
-  },
-  onDragEnd: () => {
-    store.stopDragging()
-  },
-})
+// --- Flip all ---
+function flipAll(face: 'front' | 'back') {
+  for (const card of dragCards) {
+    card.flipped = face === 'back'
+  }
+}
 
-// Get the card being dragged for preview
-const draggedCard = computed(() => {
-  if (draggedCardId.value === null) return null
-  return store.getCardById(draggedCardId.value)
-})
+// --- Restart ---
+function restart() {
+  store.restart()
+}
 
-// Lifecycle hooks
+// --- Theme: init on mount ---
+const themeStore = useThemeStore()
+
 onMounted(() => {
-  updateCardSize()
-  window.addEventListener('resize', updateCardSize)
-
-  // Global drag tracking
-  window.addEventListener('pointermove', handlePointerMove)
-  window.addEventListener('pointerup', handlePointerUp)
-  window.addEventListener('pointercancel', handlePointerUp)
+  themeStore.init()
 })
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateCardSize)
-  window.removeEventListener('pointermove', handlePointerMove)
-  window.removeEventListener('pointerup', handlePointerUp)
-  window.removeEventListener('pointercancel', handlePointerUp)
-})
-
-function updateCardSize() {
-  const width = window.innerWidth
-  if (width < 400) {
-    cardSize.value = 'sm'
-  } else if (width < 640) {
-    cardSize.value = 'md'
-  } else {
-    cardSize.value = 'lg'
-  }
-}
-
-// Handle card click (flip)
-function handleCardClick(card: CardType) {
-  store.flipCard(card.id)
-}
-
-// Get placed card count for a slot
-function getPlacedCount(character: DarkRoomChild): number {
-  return Array.from(store.placedCards.values()).filter(c => c === character).length
-}
 </script>
 
 <template>
-  <div class="view-container">
-    <!-- Ambient Header -->
-    <header class="header-sanctuary">
-      <h1 class="font-display text-xl sm:text-2xl text-warm-brown mb-2">
-        {{ isViewing ? '你的卡牌' : '开始解读' }}
+  <div class="drag-phase" :style="{ background: 'var(--app-bg)', fontFamily: 'var(--font-body)' }">
+    <!-- Header -->
+    <header class="drag-header">
+      <h1 class="drag-title" :style="{ fontFamily: 'var(--font-heading)', color: 'var(--color-text)' }">
+        拖放卡牌到对应角色
       </h1>
-      <p class="font-body text-sm text-warm-brown/60 mb-4">
-        {{ isViewing
-          ? '点击翻看卡牌背面 · 长按拖放到对应槽位'
-          : '将卡牌拖到角色槽位 · 感受每个角色的能量'
-        }}
+      <p class="drag-subtitle" :style="{ color: 'var(--color-text-muted)' }">
+        拖动卡牌 · 点击翻转 · 放到匹配的槽位
       </p>
     </header>
 
-    <!-- Character Slots - Altar of Slots -->
-    <section class="slots-altar">
-      <p class="font-card text-xs text-warm-brown/50 mb-3 uppercase tracking-wider">
-        角色槽位
-      </p>
-      <div class="slots-container">
+    <!-- Slots area -->
+    <section class="slots-area">
+      <div class="slots-grid">
         <div
-          v-for="character in CHARACTER_ORDER"
-          :key="character"
-          :ref="(el) => setDropZoneRef(character, el)"
-          class="slot-sanctuary"
-          :class="{
-            'active-drop': overDropZone === character && isDragging,
-            'has-card': getPlacedCount(character) > 0
+          v-for="slot in slots"
+          :key="slot.character"
+          :ref="(el: any) => { if (el) slot.ref.value = el as HTMLElement }"
+          class="slot"
+          :class="{ 'is-filled': slot.hasCard }"
+          :style="{
+            background: slot.hasCard ? 'var(--color-primary)' : 'var(--color-surface)',
+            borderColor: slot.hasCard ? 'var(--color-primary)' : 'var(--color-text-muted)',
           }"
         >
-          <span class="font-card text-[9px] sm:text-xs text-warm-brown/70 text-center leading-tight">
-            {{ CHARACTER_NAMES[character] }}
+          <span class="slot-name" :style="{ color: slot.hasCard ? 'var(--color-background)' : 'var(--color-text-muted)' }">
+            {{ slot.name }}
           </span>
-          <!-- Placed card count badge -->
+          <!-- Placed card indicator -->
           <div
-            v-if="getPlacedCount(character) > 0"
-            class="count-badge glow-pulse"
+            v-if="slot.hasCard"
+            class="placed-card"
+            @click="removeFromSlot(dragCards.find((c) => c.placed && store.getCardById(c.id)?.backCharacter === slot.character)?.id)"
           >
-            {{ getPlacedCount(character) }}
+            <span class="placed-name" :style="{ color: 'var(--color-background)' }">{{ slot.name }}</span>
+            <span class="remove-hint" :style="{ color: 'var(--color-background)' }">点击移除</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Selected Cards - Flow Layout -->
-    <section class="cards-flow">
-      <div
-        v-for="card in store.selectedCards"
-        :key="card.id"
-        class="card-wrapper"
-        :class="{ 'dragging-away': isDragging && draggedCardId === card.id }"
-        v-bind="canDrag ? createDragHandlers(card.id) : {}"
-        @click.stop="handleCardClick(card)"
-      >
-        <Card
-          :card="card"
-          :size="cardSize"
-          interactive
-        />
+    <!-- Available cards -->
+    <section class="cards-area">
+      <div class="cards-grid">
+        <div
+          v-for="card in availableCards"
+          :key="card.id"
+          :ref="(el: any) => setCardRef(el, card.id)"
+          class="drag-card"
+          :class="{
+            'is-flipped': card.flipped,
+          }"
+          :style="{ transform: `translate(${card.x}px, ${card.y}px)`, zIndex: card.z }"
+        >
+          <!-- Front -->
+          <div class="card-front" :style="{ background: 'var(--card-front-bg)' }">
+            <span class="card-id" :style="{ color: 'var(--color-text-muted)' }">#{{ card.id }}</span>
+            <span class="card-text" :style="{ color: 'var(--color-text)', fontFamily: 'var(--font-card)' }">
+              {{ store.getCardById(card.id)?.frontText }}
+            </span>
+            <span class="card-hint" :style="{ color: 'var(--color-text-muted)' }">拖动或点击</span>
+          </div>
+          <!-- Back -->
+          <div class="card-back" :style="{ background: 'var(--card-back-bg)' }">
+            <img
+              :src="store.getCardById(card.id)?.backImage"
+              :alt="store.getCardById(card.id)?.characterName"
+              class="card-image"
+              loading="lazy"
+              @error="($event.target as HTMLImageElement).style.display = 'none'"
+            />
+            <div class="card-name-bar" :style="{ background: 'var(--color-primary)', color: 'var(--color-background)' }">
+              {{ store.getCardById(card.id)?.characterName }}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- Drag Preview - Floating Card -->
-    <Teleport to="body">
-      <Transition name="drag-preview">
-        <div
-          v-if="isDragging && draggedCard"
-          class="drag-preview floating"
-          :style="dragPreviewStyle"
-        >
-          <Card
-            :card="draggedCard"
-            size="md"
-            :interactive="false"
-          />
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Control Altar - Fixed at bottom -->
-    <footer class="control-altar">
-      <!-- Flip Controls -->
+    <!-- Bottom controls -->
+    <footer class="controls-bar">
       <div class="flip-controls">
         <button
-          class="btn-sanctuary outline"
-          @click="store.flipAllCards('front')"
+          class="ctrl-btn"
+          :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
+          @click="flipAll('front')"
         >
-          <span class="font-card">全部正面</span>
+          全部正面
         </button>
         <button
-          class="btn-sanctuary outline"
-          @click="store.flipAllCards('back')"
+          class="ctrl-btn"
+          :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
+          @click="flipAll('back')"
         >
-          <span class="font-card">全部反面</span>
+          全部反面
         </button>
       </div>
-
-      <!-- Main Actions -->
-      <div class="main-actions">
-        <button
-          class="btn-sanctuary outline"
-          @click="store.restart"
-        >
-          <span class="font-card">重新开始</span>
-        </button>
-        <button
-          v-if="isViewing"
-          class="btn-sanctuary glow-pulse"
-          @click="store.startInterpreting"
-        >
-          <span class="font-card">开始解读</span>
-        </button>
-        <button
-          v-if="isInterpreting"
-          class="btn-sanctuary secondary"
-          @click="store.gamePhase = 'viewing'"
-        >
-          <span class="font-card">返回查看</span>
-        </button>
-      </div>
+      <button
+        class="ctrl-btn restart-btn"
+        :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
+        @click="restart"
+      >
+        重新开始
+      </button>
     </footer>
   </div>
 </template>
 
 <style scoped>
-.view-container {
+.drag-phase {
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  padding: 1rem 1.5rem 8rem;
+  transition: background-color 0.4s ease;
 }
 
 /* Header */
-.header-sanctuary {
+.drag-header {
   text-align: center;
-  padding: 1.5rem 1rem;
-  position: relative;
+  padding: 1rem 1rem 0.5rem;
 }
 
-.header-sanctuary h1 {
-  letter-spacing: -0.02em;
+.drag-title {
+  font-size: 1.25rem;
+  margin: 0;
 }
 
-.header-sanctuary h1::after {
-  content: '';
-  position: absolute;
-  bottom: -0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--honey), transparent);
-  opacity: 0.4;
+.drag-subtitle {
+  font-size: 0.8rem;
+  margin: 0.25rem 0;
 }
 
-/* Slots Altar */
-.slots-altar {
-  padding: 0rem 1rem;
+/* Slots */
+.slots-area {
+  padding: 0.75rem 1rem;
 }
 
-.slots-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
-.slot-sanctuary {
-  position: relative;
-  width: 4rem;
-  height: 5rem;
+.slot {
+  aspect-ratio: 3 / 4;
+  border: 2px dashed;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
-  transition: all 0.3s var(--transition-smooth);
+  gap: 0.25rem;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.slot-sanctuary.active-drop {
-  background: linear-gradient(180deg, var(--honey-light) 0%, var(--honey) 100%);
-  transform: scale(1.08);
-  box-shadow: var(--shadow-glow);
+.slot:nth-child(7) {
+  grid-column: 2 / 4;
 }
 
-.slot-sanctuary.has-card {
-  background: linear-gradient(180deg, var(--sage-light) 0%, var(--sage) 100%);
+.slot.is-filled {
+  border-style: solid;
 }
 
-.count-badge {
+.slot-name {
+  font-size: 0.75rem;
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: var(--radius-full);
-  background: var(--terracotta);
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(196, 122, 94, 0.3);
+  bottom: 4px;
+  opacity: 0.5;
 }
 
-/* Cards Flow */
-.cards-flow {
+.placed-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.remove-hint {
+  font-size: 0.6rem;
+  opacity: 0.5;
+  font-weight: 400;
+}
+
+/* Cards */
+.cards-area {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+}
+
+.cards-grid {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.75rem;
+  padding-bottom: 6rem;
 }
 
-.card-wrapper {
-  transition: all 0.2s ease;
+.drag-card {
+  width: 100px;
+  height: 140px;
+  border-radius: var(--card-radius);
+  cursor: grab;
+  position: relative;
+  perspective: 600px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: box-shadow 0.2s ease;
+  box-shadow: var(--card-shadow);
 }
 
-.card-wrapper.dragging-away {
-  opacity: 0.4;
-  transform: scale(0.9);
+.drag-card:active {
+  cursor: grabbing;
+  box-shadow: var(--card-shadow-hover);
 }
 
-/* Drag Preview */
-.drag-preview {
-  pointer-events: none;
-  z-index: 9999;
+/* Flip */
+.card-front,
+.card-back {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform 0.4s ease;
+  border: var(--card-border);
+  overflow: hidden;
 }
 
-/* Control Altar */
-.control-altar {
+.card-front {
+  background: var(--card-front-bg);
+}
+
+.card-back {
+  background: var(--card-back-bg);
+  transform: rotateY(180deg);
+}
+
+.drag-card.is-flipped .card-front {
+  transform: rotateY(-180deg);
+}
+
+.drag-card.is-flipped .card-back {
+  transform: rotateY(0deg);
+}
+
+.card-id {
+  font-size: 0.65rem;
+  opacity: 0.3;
+  position: absolute;
+  top: 6px;
+  left: 8px;
+}
+
+.card-text {
+  font-size: 0.75rem;
+  text-align: center;
+  line-height: 1.4;
+  padding: 0.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-hint {
+  font-size: 0.55rem;
+  opacity: 0.3;
+  position: absolute;
+  bottom: 6px;
+}
+
+.card-image {
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 30px);
+  object-fit: cover;
+  border-radius: calc(var(--card-radius) - 4px);
+}
+
+.card-name-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.25rem 0;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* Controls */
+.controls-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
-  padding: 1rem 1.5rem 1.5rem;
-  background: linear-gradient(to top, var(--cream-100) 60%, transparent);
+  padding: 0.75rem 1.25rem 1.25rem;
+  background: linear-gradient(to top, var(--app-bg) 60%, transparent);
   backdrop-filter: blur(8px);
 }
 
 .flip-controls {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
 }
 
-.main-actions {
-  display: flex;
-  gap: 0.75rem;
+.ctrl-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.ctrl-btn:active {
+  transform: scale(0.95);
 }
 
 /* Responsive */
-@media (max-width: 400px) {
-  .view-container {
-    padding: 0.75rem 1rem 6rem;
+@media (max-width: 380px) {
+  .drag-card {
+    width: 85px;
+    height: 120px;
   }
 
-  .slot-sanctuary {
-    width: 3.5rem;
-    height: 4.5rem;
+  .card-text {
+    font-size: 0.7rem;
   }
 
-  .cards-flow {
-    gap: 0.75rem;
+  .slots-grid {
+    gap: 0.375rem;
   }
 
-  .control-altar {
+  .controls-bar {
     padding: 0.75rem 1rem 1rem;
   }
-}
-
-/* Text utilities */
-.text-warm-brown {
-  color: var(--warm-brown);
-}
-
-.text-warm-brown-50 {
-  color: var(--warm-brown);
-  opacity: 0.5;
-}
-
-.text-warm-brown-60 {
-  color: var(--warm-brown);
-  opacity: 0.6;
-}
-
-.text-warm-brown-70 {
-  color: var(--warm-brown);
-  opacity: 0.7;
 }
 </style>
