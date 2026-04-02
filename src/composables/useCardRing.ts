@@ -78,16 +78,30 @@ export function useCardRing(options: UseCardRingOptions): UseCardRingReturn {
   function next() { goTo(activeIndex.value + 1) }
 
   // --- Gesture ---
+  const MAX_FLICK_DISTANCE = 4 // Max cards a single flick can travel (tunable)
   let dragStartX = 0
   let dragStartIndex = 0
+  let dragStartTime = 0
+  let carryDistance = 0 // Remaining momentum from previous animation
   const lastPositions: number[] = []
   const lastTimes: number[] = []
 
   function onPointerDown(e: PointerEvent) {
+    // Capture remaining animation distance as carry momentum
+    const count = cardCount.value
+    if (count > 0) {
+      carryDistance = activeIndex.value - animatedIndex.value
+      if (carryDistance > count / 2) carryDistance -= count
+      if (carryDistance < -count / 2) carryDistance += count
+    } else {
+      carryDistance = 0
+    }
+
     cancelAnimationFrame(animRaf)
     isDragging.value = true
     dragStartX = e.clientX
     dragStartIndex = animatedIndex.value
+    dragStartTime = performance.now()
     lastPositions.length = 0
     lastTimes.length = 0
     lastPositions.push(e.clientX)
@@ -126,7 +140,20 @@ export function useCardRing(options: UseCardRingOptions): UseCardRingReturn {
       }
     }
 
-    const projected = animatedIndex.value + velocity * 8
+    // Cap single flick distance (iOS-style speed limit per gesture)
+    const flickDistance = Math.max(
+      -MAX_FLICK_DISTANCE,
+      Math.min(MAX_FLICK_DISTANCE, velocity * 8),
+    )
+
+    // Kill carry momentum if drag was held too long (user intentionally stopped)
+    if (performance.now() - dragStartTime > 300) carryDistance = 0
+
+    // Combine carried momentum with new flick (can exceed cap via accumulation)
+    const totalDistance = carryDistance + flickDistance
+    carryDistance = 0
+
+    const projected = animatedIndex.value + totalDistance
     const nearest = Math.round(projected)
     activeIndex.value = ((nearest % count) + count) % count
     animateTo(activeIndex.value)

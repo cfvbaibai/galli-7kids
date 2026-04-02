@@ -19,6 +19,8 @@ const {
   visibleIndices,
   activeCard,
   goTo,
+  prev,
+  next,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -31,6 +33,18 @@ const {
 // --- Selection ---
 const trayOpen = ref(false)
 const maxReachedShake = ref(false)
+const showMaxToast = ref(false)
+let maxToastTimer = 0
+
+function triggerMaxReached() {
+  maxReachedShake.value = true
+  showMaxToast.value = true
+  clearTimeout(maxToastTimer)
+  maxToastTimer = window.setTimeout(() => {
+    maxReachedShake.value = false
+    showMaxToast.value = false
+  }, 1500)
+}
 
 function handleCenterTap() {
   const card = activeCard.value
@@ -42,8 +56,7 @@ function handleCenterTap() {
   }
 
   if (!store.canSelectMore) {
-    maxReachedShake.value = true
-    setTimeout(() => { maxReachedShake.value = false }, 400)
+    triggerMaxReached()
     return
   }
 
@@ -65,8 +78,7 @@ function handleCardTap(index: number) {
   }
 
   if (!store.canSelectMore) {
-    maxReachedShake.value = true
-    setTimeout(() => { maxReachedShake.value = false }, 400)
+    triggerMaxReached()
     return
   }
 
@@ -117,6 +129,18 @@ const canConfirm = computed(() => store.selectedCount >= 1)
         洗牌
       </button>
     </header>
+
+    <!-- Max-selection toast -->
+    <Transition name="toast">
+      <div v-if="showMaxToast" class="max-toast" :style="{ background: 'var(--color-primary)', color: 'var(--color-background)' }">
+        <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span>已选满 10 张卡牌</span>
+      </div>
+    </Transition>
 
     <!-- Carousel -->
     <div
@@ -173,6 +197,28 @@ const canConfirm = computed(() => store.selectedCount >= 1)
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Step navigation -->
+      <div class="step-nav">
+        <button
+          class="step-btn"
+          :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
+          @click.stop="prev()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <button
+          class="step-btn"
+          :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
+          @click.stop="next()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 6 15 12 9 18" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -282,12 +328,14 @@ const canConfirm = computed(() => store.selectedCount >= 1)
   height: 14px;
 }
 
-/* Carousel viewport (same as CardRingTest) */
+/* Carousel viewport */
 .carousel-viewport {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding-top: 10vh;
   perspective: 1200px;
   min-height: 400px;
   overflow: hidden;
@@ -436,6 +484,37 @@ const canConfirm = computed(() => store.selectedCount >= 1)
   z-index: 2;
 }
 
+/* Step navigation */
+.step-nav {
+  display: flex;
+  justify-content: center;
+  gap: 12rem;
+  padding: 1.5rem 1rem 0;
+  pointer-events: auto;
+}
+
+.step-btn {
+  width: 64px;
+  height: 64px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--card-shadow);
+}
+
+.step-btn svg {
+  width: 32px;
+  height: 32px;
+}
+
+.step-btn:active {
+  transform: scale(0.9);
+}
+
 /* Detail bar */
 .detail-bar {
   display: flex;
@@ -513,7 +592,57 @@ const canConfirm = computed(() => store.selectedCount >= 1)
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Shake animation for max-reached feedback */
+/* Max-selection toast */
+.max-toast {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.toast-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.toast-enter-active {
+  animation: toast-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toast-leave-active {
+  animation: toast-out 0.25s ease-in forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
 .shake {
   animation: shake 0.4s ease;
 }
