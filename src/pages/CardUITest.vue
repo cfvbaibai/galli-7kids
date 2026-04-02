@@ -33,7 +33,6 @@ const showcaseCards = CHARACTER_ORDER.map(char => {
 
 // Flip & select state
 const flippedCards = ref<Set<number>>(new Set())
-const selectedCards = ref<Set<number>>(new Set())
 
 // Interactive demo card
 const demoFlipped = ref(false)
@@ -74,11 +73,6 @@ const colorModes: { value: ColorMode; label: string }[] = [
 function toggleFlip(id: number) {
   if (flippedCards.value.has(id)) flippedCards.value.delete(id)
   else flippedCards.value.add(id)
-}
-
-function _toggleSelect(id: number) {
-  if (selectedCards.value.has(id)) selectedCards.value.delete(id)
-  else selectedCards.value.add(id)
 }
 </script>
 
