@@ -1,4 +1,4 @@
-import { ref, computed, onUnmounted, type Ref } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import type { DarkRoomChild } from '@/types/card'
 
 export interface DropZone {

@@ -46,24 +46,6 @@ function triggerMaxReached() {
   }, 1500)
 }
 
-function handleCenterTap() {
-  const card = activeCard.value
-  if (!card) return
-
-  if (store.isCardSelected(card.id)) {
-    store.toggleCardSelection(card.id)
-    return
-  }
-
-  if (!store.canSelectMore) {
-    triggerMaxReached()
-    return
-  }
-
-  store.toggleCardSelection(card.id)
-  tryHaptic()
-}
-
 function handleCardTap(index: number) {
   // Always bring tapped card to front
   goTo(index)

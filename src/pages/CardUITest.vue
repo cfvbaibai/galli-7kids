@@ -4,7 +4,7 @@ import { useThemeStore } from '@/stores/theme'
 import { themeNames, themes } from '@/themes'
 import type { ThemeName, ColorMode } from '@/themes'
 import type { DarkRoomChild } from '@/types/card'
-import { CHARACTER_ORDER, CHARACTER_NAMES, CHARACTER_IMAGES } from '@/types/card'
+import { CHARACTER_ORDER, CHARACTER_NAMES } from '@/types/card'
 import chroma from 'chroma-js'
 import { cards } from '@/data/cards'
 
@@ -76,7 +76,7 @@ function toggleFlip(id: number) {
   else flippedCards.value.add(id)
 }
 
-function toggleSelect(id: number) {
+function _toggleSelect(id: number) {
   if (selectedCards.value.has(id)) selectedCards.value.delete(id)
   else selectedCards.value.add(id)
 }

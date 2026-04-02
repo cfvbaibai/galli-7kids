@@ -12,7 +12,6 @@ const themeStore = useThemeStore()
 // --- Constants ---
 const CARD_W = 100
 const CARD_H = 140
-const SLOT_COUNT = 7
 const OVERLAP = 70
 const CONTROLS_H = 64
 const HEADER_H = 70
