@@ -45,7 +45,7 @@ const getSlotStyle = (character: DarkRoomChild) => ({
   <div class="table-surface">
     <!-- Background Image - Subtle -->
     <img
-      src="/images/背景/背景+7个小孩卡槽.jpg"
+      :src="`${import.meta.env.BASE_URL}images/背景/背景+7个小孩卡槽.jpg`"
       alt="Table Background"
       class="background-image"
     />

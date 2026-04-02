@@ -37,17 +37,19 @@ export const CHARACTER_NAMES: Record<DarkRoomChild, string> = {
   gossip: '包打听',
 }
 
+const base = import.meta.env.BASE_URL
+
 /**
  * Character image paths (matching actual file names)
  */
 export const CHARACTER_IMAGES: Record<DarkRoomChild, string> = {
-  seductress: '/images/反面/多情种.jpg',
-  smallone: '/images/反面/小不点.jpg',
-  sleepyhead: '/images/反面/睡不醒.jpg',
-  showoff: '/images/反面/自大狂.jpg',
-  aggressive: '/images/反面/暴躁狂.jpg',
-  miser: '/images/反面/吝啬鬼.jpg',
-  gossip: '/images/反面/包打听.jpg',
+  seductress: `${base}images/反面/多情种.jpg`,
+  smallone: `${base}images/反面/小不点.jpg`,
+  sleepyhead: `${base}images/反面/睡不醒.jpg`,
+  showoff: `${base}images/反面/自大狂.jpg`,
+  aggressive: `${base}images/反面/暴躁狂.jpg`,
+  miser: `${base}images/反面/吝啬鬼.jpg`,
+  gossip: `${base}images/反面/包打听.jpg`,
 }
 
 /**
