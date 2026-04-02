@@ -180,13 +180,14 @@ export function useCardRing(options: UseCardRingOptions): UseCardRingReturn {
     const absOffset = Math.abs(offset)
 
     const x = offset * baseOffset
-    const rotateY = offset * -8
+    const z = -absOffset * absOffset * 6 // Quadratic depth — side cards recede
+    const rotateY = offset * 10
     const scale = 1 - Math.min(absOffset, 4) * 0.08
     const opacity = 1 - Math.min(absOffset, 4) * 0.22
     const zIndex = 100 - Math.round(absOffset * 10)
 
     return {
-      transform: `translateX(${x}px) rotateY(${rotateY}deg) scale(${scale})`,
+      transform: `translateX(${x}px) translateZ(${z}px) rotateY(${rotateY}deg) scale(${scale})`,
       opacity: Math.max(0, opacity),
       zIndex,
     }

@@ -204,7 +204,7 @@ const canConfirm = computed(() => store.selectedCount >= 1)
         <button
           class="step-btn"
           :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
-          @click.stop="prev()"
+          @click.stop="next()"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6" />
@@ -213,7 +213,7 @@ const canConfirm = computed(() => store.selectedCount >= 1)
         <button
           class="step-btn"
           :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
-          @click.stop="next()"
+          @click.stop="prev()"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 6 15 12 9 18" />
@@ -336,7 +336,7 @@ const canConfirm = computed(() => store.selectedCount >= 1)
   align-items: center;
   justify-content: center;
   padding-top: 10vh;
-  perspective: 1200px;
+  perspective: 700px;
   min-height: 400px;
   overflow: hidden;
   touch-action: pan-y;
