@@ -120,25 +120,6 @@ export function getCardsByCharacter(): Record<DarkRoomChild, Card[]> {
 }
 
 /**
- * Get cards in 7x7 grid format (row-major order)
- * Each row contains one card from each character
- */
-export function getCardsGrid(): Card[][] {
-  const byCharacter = getCardsByCharacter()
-  const grid: Card[][] = []
-
-  for (let row = 0; row < 7; row++) {
-    const rowCards: Card[] = []
-    for (const char of CHARACTER_ORDER) {
-      rowCards.push(byCharacter[char][row])
-    }
-    grid.push(rowCards)
-  }
-
-  return grid
-}
-
-/**
  * Get a card by its ID
  */
 export function getCardById(id: number): Card | undefined {

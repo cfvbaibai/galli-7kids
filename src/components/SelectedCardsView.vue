@@ -1,13 +1,23 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useDrag } from '@vueuse/gesture'
+import { useEventListener } from '@vueuse/core'
 import { useCardGameStore } from '@/stores/cardGame'
 import { useThemeStore } from '@/stores/theme'
-import { CHARACTER_ORDER, CHARACTER_NAMES, type DarkRoomChild } from '@/types/card'
+import { CHARACTER_ORDER, CHARACTER_NAMES, CHARACTER_IMAGES, type DarkRoomChild } from '@/types/card'
 
 const store = useCardGameStore()
+const themeStore = useThemeStore()
 
-// --- Drag card state (visual positions) ---
+// --- Constants ---
+const CARD_W = 100
+const CARD_H = 140
+const SLOT_COUNT = 7
+const OVERLAP = 70
+const CONTROLS_H = 64
+const HEADER_H = 70
+
+// --- Card state ---
 interface DragCardState {
   id: number
   x: number
@@ -17,44 +27,122 @@ interface DragCardState {
   flipped: boolean
 }
 
-// Initialize from store's selected cards
 const dragCards = reactive<DragCardState[]>(
-  store.selectedCards.map((card) => ({
+  store.selectedCards.map((card, i) => ({
     id: card.id,
     x: 0,
     y: 0,
-    z: 0,
+    z: i + 1,
     placed: false,
     flipped: false,
   }))
 )
 
-// Keep in sync if selection changes (shouldn't during this phase, but safe)
+const topZ = ref(dragCards.length)
 const cardRefs = ref<Map<number, HTMLElement>>(new Map())
+const slotRefs = ref<Map<string, HTMLElement>>(new Map())
+const cardBasePos = new Map<number, { x: number; y: number }>()
+const slotPixelPositions = ref<Array<{ left: number; top: number }>>([])
 
 function setCardRef(el: any, id: number) {
   if (el) cardRefs.value.set(id, el as HTMLElement)
+}
+
+function setSlotRef(el: any, char: string) {
+  if (el) slotRefs.value.set(char, el as HTMLElement)
+}
+
+// --- Layout calculation (viewport-adaptive) ---
+function calculateLayout() {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  // Layout matching reference image: 小不点 center, 6 others in an elliptical ring
+  const n = dragCards.length
+  const cardsH = n > 5 ? CARD_H + CARD_H / 2 : CARD_H
+  const cx = vw / 2
+  const availableH = vh - HEADER_H - CONTROLS_H - cardsH
+  const cy = HEADER_H + availableH / 2
+
+  // Ellipse: maximize both axes to fill available space
+  const rx = (vw - CARD_W) / 2 - 10            // use most horizontal space
+  const ry = availableH / 2 - CARD_H / 2 - 8   // use most vertical space, keep slots on screen
+
+  // Ring: 6 characters clockwise from top (matching reference image)
+  const ringLayout: { char: DarkRoomChild; angle: number }[] = [
+    { char: 'sleepyhead',  angle: -Math.PI / 2 },                  // top
+    { char: 'showoff',     angle: -Math.PI / 2 + Math.PI / 3 },    // top-right
+    { char: 'gossip',      angle: -Math.PI / 2 + 2 * Math.PI / 3 },// bottom-right
+    { char: 'seductress',  angle: Math.PI / 2 },                    // bottom
+    { char: 'aggressive',  angle: Math.PI / 2 + Math.PI / 3 },     // bottom-left
+    { char: 'miser',       angle: Math.PI / 2 + 2 * Math.PI / 3 }, // top-left
+  ]
+
+  const charPos = new Map<DarkRoomChild, { left: number; top: number }>()
+  charPos.set('smallone', { left: cx, top: cy }) // center
+  for (const { char, angle } of ringLayout) {
+    charPos.set(char, {
+      left: cx + Math.cos(angle) * rx,
+      top: cy + Math.sin(angle) * ry,
+    })
+  }
+
+  slotPixelPositions.value = CHARACTER_ORDER.map(char => charPos.get(char)!)
+
+  // Home positions: overlapping row(s) above the controls bar
+  const baseY = vh - CARD_H - CONTROLS_H - 12
+
+  if (n <= 5) {
+    // Single row
+    const totalW = OVERLAP * (n - 1) + CARD_W
+    const startX = (vw - totalW) / 2
+    dragCards.forEach((card, i) => {
+      if (!card.placed) {
+        card.x = startX + i * OVERLAP
+        card.y = baseY
+      }
+    })
+  } else {
+    // Two rows: top row gets ceil(n/2), bottom row gets floor(n/2)
+    const topCount = Math.ceil(n / 2)
+    const botCount = n - topCount
+
+    const topTotalW = OVERLAP * (topCount - 1) + CARD_W
+    const topStartX = (vw - topTotalW) / 2
+    const topY = baseY - CARD_H / 2
+
+    const botTotalW = OVERLAP * (botCount - 1) + CARD_W
+    const botStartX = (vw - botTotalW) / 2
+
+    dragCards.forEach((card, i) => {
+      if (!card.placed) {
+        if (i < topCount) {
+          card.x = topStartX + i * OVERLAP
+          card.y = topY
+        } else {
+          card.x = botStartX + (i - topCount) * OVERLAP
+          card.y = baseY
+        }
+      }
+    })
+  }
 }
 
 // --- Slots ---
 const slots = CHARACTER_ORDER.map((char) => ({
   character: char,
   name: CHARACTER_NAMES[char],
-  ref: ref<HTMLElement | null>(null),
-  hasCard: computed(() => {
-    const cardData = dragCards.find((c) => {
+  image: CHARACTER_IMAGES[char],
+  hasCard: computed(() =>
+    dragCards.some((c) => {
       if (!c.placed) return false
       const data = store.getCardById(c.id)
       return data?.backCharacter === char
     })
-    return !!cardData
-  }),
+  ),
 }))
 
-// --- Z-index counter ---
-const topZ = ref(1)
-
-// --- Set up useDrag for each card ---
+// --- Drag handlers ---
 dragCards.forEach((card) => {
   useDrag(
     (state) => {
@@ -66,18 +154,27 @@ dragCards.forEach((card) => {
       }
 
       if (first) {
+        card.placed = false
         cardBasePos.set(card.id, { x: card.x, y: card.y })
         card.z = ++topZ.value
       }
 
       if (active) {
         const base = cardBasePos.get(card.id) ?? { x: 0, y: 0 }
-        card.x = base.x + movement[0]
-        card.y = base.y + movement[1]
+        let newX = base.x + movement[0]
+        let newY = base.y + movement[1]
+
+        // Boundary clamp — keep card on screen, above controls bar
+        const vw = window.innerWidth
+        const vh = window.innerHeight
+        newX = Math.max(-CARD_W * 0.7, Math.min(vw - CARD_W * 0.3, newX))
+        newY = Math.max(HEADER_H - CARD_H * 0.3, Math.min(vh - CONTROLS_H - CARD_H, newY))
+
+        card.x = newX
+        card.y = newY
       }
 
       if (last) {
-        // Check if card was dropped on a matching slot
         checkSlotDrop(card)
       }
     },
@@ -90,75 +187,65 @@ dragCards.forEach((card) => {
   )
 })
 
-// Base position per card — preserves visual position across drags
-const cardBasePos = new Map<number, { x: number; y: number }>()
-
 // --- Slot drop detection ---
 function checkSlotDrop(card: DragCardState) {
   const cardEl = cardRefs.value.get(card.id)
   if (!cardEl) return
 
   const cardRect = cardEl.getBoundingClientRect()
-  const cardCenterX = cardRect.left + cardRect.width / 2
-  const cardCenterY = cardRect.top + cardRect.height / 2
+  const cx = cardRect.left + cardRect.width / 2
+  const cy = cardRect.top + cardRect.height / 2
 
   for (const slot of slots) {
-    const el = slot.ref.value
+    const el = slotRefs.value.get(slot.character)
     if (!el) continue
 
-    const slotRect = el.getBoundingClientRect()
-    const padding = 20
+    const sr = el.getBoundingClientRect()
+    const pad = 25
 
     if (
-      cardCenterX >= slotRect.left - padding &&
-      cardCenterX <= slotRect.right + padding &&
-      cardCenterY >= slotRect.top - padding &&
-      cardCenterY <= slotRect.bottom + padding
+      cx >= sr.left - pad &&
+      cx <= sr.right + pad &&
+      cy >= sr.top - pad &&
+      cy <= sr.bottom + pad
     ) {
-      // Get the actual card data to check character match
-      const cardData = store.getCardById(card.id)
-      if (cardData && cardData.backCharacter === slot.character) {
-        // Snap card into slot
+      const data = store.getCardById(card.id)
+      if (data && data.backCharacter === slot.character) {
+        // Prevent double-occupancy
+        const occupied = dragCards.some((c) => {
+          if (c.id === card.id || !c.placed) return false
+          const cd = store.getCardById(c.id)
+          return cd?.backCharacter === slot.character
+        })
+        if (occupied) return
+
+        // Snap card to slot center
+        card.x = sr.left + sr.width / 2 - CARD_W / 2
+        card.y = sr.top + sr.height / 2 - CARD_H / 2
         card.placed = true
-        card.x = 0
-        card.y = 0
-        cardBasePos.set(card.id, { x: 0, y: 0 })
+        cardBasePos.set(card.id, { x: card.x, y: card.y })
         return
       }
     }
   }
 }
 
-// --- Remove card from slot ---
-function removeFromSlot(cardId: number) {
-  const card = dragCards.find((c) => c.id === cardId)
-  if (!card) return
-  card.placed = false
-  card.x = 0
-  card.y = 0
-  cardBasePos.set(card.id, { x: 0, y: 0 })
-}
-
-// --- Available (unplaced) cards ---
-const availableCards = computed(() => dragCards.filter((c) => !c.placed))
-
-// --- Flip all ---
+// --- Controls ---
 function flipAll(face: 'front' | 'back') {
   for (const card of dragCards) {
     card.flipped = face === 'back'
   }
 }
 
-// --- Restart ---
 function restart() {
   store.restart()
 }
 
-// --- Theme: init on mount ---
-const themeStore = useThemeStore()
-
+// --- Init ---
 onMounted(() => {
   themeStore.init()
+  nextTick(calculateLayout)
+  useEventListener(window, 'resize', calculateLayout)
 })
 </script>
 
@@ -174,69 +261,63 @@ onMounted(() => {
       </p>
     </header>
 
-    <!-- Slots area -->
-    <section class="slots-area">
-      <div class="slots-grid">
-        <div
-          v-for="slot in slots"
-          :key="slot.character"
-          :ref="(el: any) => { if (el) slot.ref.value = el as HTMLElement }"
-          class="slot"
-          :class="{ 'is-filled': slot.hasCard }"
-          :style="{
-            background: slot.hasCard ? 'var(--color-primary)' : 'var(--color-surface)',
-            borderColor: slot.hasCard ? 'var(--color-primary)' : 'var(--color-text-muted)',
-          }"
-        >
-          <span class="slot-name" :style="{ color: slot.hasCard ? 'var(--color-background)' : 'var(--color-text-muted)' }">
-            {{ slot.name }}
-          </span>
-          <!-- Placed card indicator -->
-          <div
-            v-if="slot.hasCard"
-            class="placed-card"
-            @click="removeFromSlot(dragCards.find((c) => c.placed && store.getCardById(c.id)?.backCharacter === slot.character)?.id ?? -1)"
-          >
-            <span class="placed-name" :style="{ color: 'var(--color-background)' }">{{ slot.name }}</span>
-            <span class="remove-hint" :style="{ color: 'var(--color-background)' }">点击移除</span>
-          </div>
-        </div>
+    <!-- Slots — fixed overlay, subtle background targets -->
+    <section class="slots-overlay">
+      <div
+        v-for="(slot, i) in slots"
+        :key="slot.character"
+        :ref="(el: any) => setSlotRef(el, slot.character)"
+        class="slot"
+        :class="{ 'is-filled': slot.hasCard }"
+        :style="{
+          left: `${slotPixelPositions[i]?.left ?? 50}px`,
+          top: `${slotPixelPositions[i]?.top ?? 50}px`,
+        }"
+      >
+        <img
+          :src="slot.image"
+          :alt="slot.name"
+          class="slot-preview"
+          loading="lazy"
+          @error="($event.target as HTMLImageElement).style.display = 'none'"
+        />
+        <span class="slot-name">{{ slot.name }}</span>
       </div>
     </section>
 
-    <!-- Available cards -->
+    <!-- Cards overlay — all cards, absolutely positioned -->
     <section class="cards-area">
-      <div class="cards-grid">
-        <div
-          v-for="card in availableCards"
-          :key="card.id"
-          :ref="(el: any) => setCardRef(el, card.id)"
-          class="drag-card"
-          :class="{
-            'is-flipped': card.flipped,
-          }"
-          :style="{ transform: `translate(${card.x}px, ${card.y}px)`, zIndex: card.z }"
-        >
-          <!-- Front -->
-          <div class="card-front" :style="{ background: 'var(--card-front-bg)' }">
-            <span class="card-id" :style="{ color: 'var(--color-text-muted)' }">#{{ card.id }}</span>
-            <span class="card-text" :style="{ color: 'var(--color-text)', fontFamily: 'var(--font-card)' }">
-              {{ store.getCardById(card.id)?.frontText }}
-            </span>
-            <span class="card-hint" :style="{ color: 'var(--color-text-muted)' }">拖动或点击</span>
-          </div>
-          <!-- Back -->
-          <div class="card-back" :style="{ background: 'var(--card-back-bg)' }">
-            <img
-              :src="store.getCardById(card.id)?.backImage"
-              :alt="store.getCardById(card.id)?.characterName"
-              class="card-image"
-              loading="lazy"
-              @error="($event.target as HTMLImageElement).style.display = 'none'"
-            />
-            <div class="card-name-bar" :style="{ background: 'var(--color-primary)', color: 'var(--color-background)' }">
-              {{ store.getCardById(card.id)?.characterName }}
-            </div>
+      <div
+        v-for="card in dragCards"
+        :key="card.id"
+        :ref="(el: any) => setCardRef(el, card.id)"
+        class="drag-card"
+        :class="{ 'is-flipped': card.flipped }"
+        :style="{
+          left: `${card.x}px`,
+          top: `${card.y}px`,
+          zIndex: card.z,
+        }"
+      >
+        <!-- Front -->
+        <div class="card-front" :style="{ background: 'var(--card-front-bg)' }">
+          <span class="card-id" :style="{ color: 'var(--color-text-muted)' }">#{{ card.id }}</span>
+          <span class="card-text" :style="{ color: 'var(--color-text)', fontFamily: 'var(--font-card)' }">
+            {{ store.getCardById(card.id)?.frontText }}
+          </span>
+          <span class="card-hint" :style="{ color: 'var(--color-text-muted)' }">拖动或点击</span>
+        </div>
+        <!-- Back -->
+        <div class="card-back" :style="{ background: 'var(--card-back-bg)' }">
+          <img
+            :src="store.getCardById(card.id)?.backImage"
+            :alt="store.getCardById(card.id)?.characterName"
+            class="card-image"
+            loading="lazy"
+            @error="($event.target as HTMLImageElement).style.display = 'none'"
+          />
+          <div class="card-name-bar" :style="{ background: 'var(--color-primary)', color: 'var(--color-background)' }">
+            {{ store.getCardById(card.id)?.characterName }}
           </div>
         </div>
       </div>
@@ -284,6 +365,8 @@ onMounted(() => {
 .drag-header {
   text-align: center;
   padding: 1rem 1rem 0.5rem;
+  position: relative;
+  z-index: 4;
 }
 
 .drag-title {
@@ -296,91 +379,79 @@ onMounted(() => {
   margin: 0.25rem 0;
 }
 
-/* Slots */
-.slots-area {
-  padding: 0.75rem 1rem;
-}
-
-.slots-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-  max-width: 400px;
-  margin: 0 auto;
+/* Slots — fixed overlay, subtle background */
+.slots-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .slot {
-  aspect-ratio: 3 / 4;
-  border: 2px dashed;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.slot:nth-child(7) {
-  grid-column: 2 / 4;
+  position: absolute;
+  width: 100px;
+  height: 140px;
+  border: 1.5px dashed;
+  border-color: var(--color-text-muted);
+  border-radius: var(--card-radius);
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  opacity: 0.3;
+  transition: all 0.3s ease;
 }
 
 .slot.is-filled {
   border-style: solid;
+  border-color: var(--color-primary);
+  opacity: 0.45;
+}
+
+.slot-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  opacity: 0.18;
+  pointer-events: none;
 }
 
 .slot-name {
-  font-size: 0.75rem;
   position: absolute;
-  bottom: 4px;
-  opacity: 0.5;
-}
-
-.placed-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  cursor: pointer;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 4px;
+  text-align: center;
   font-size: 0.85rem;
   font-weight: 600;
+  color: var(--color-text);
+  background: linear-gradient(to top, var(--app-bg) 30%, transparent);
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.05em;
 }
 
-.remove-hint {
-  font-size: 0.6rem;
-  opacity: 0.5;
-  font-weight: 400;
-}
-
-/* Cards */
+/* Cards — fixed overlay */
 .cards-area {
-  flex: 1;
-  padding: 1rem;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  overflow: auto;
-}
-
-.cards-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem;
-  padding-bottom: 6rem;
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .drag-card {
+  position: absolute;
   width: 100px;
   height: 140px;
   border-radius: var(--card-radius);
   cursor: grab;
-  position: relative;
   perspective: 600px;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  pointer-events: auto;
   transition: box-shadow 0.2s ease;
   box-shadow: var(--card-shadow);
 }
@@ -478,6 +549,7 @@ onMounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -515,12 +587,17 @@ onMounted(() => {
     height: 120px;
   }
 
+  .slot {
+    width: 85px;
+    height: 120px;
+  }
+
   .card-text {
     font-size: 0.7rem;
   }
 
-  .slots-grid {
-    gap: 0.375rem;
+  .slot-name {
+    font-size: 0.75rem;
   }
 
   .controls-bar {
