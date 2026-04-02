@@ -51,6 +51,29 @@ function handleCenterTap() {
   tryHaptic()
 }
 
+function handleCardTap(index: number) {
+  // Always bring tapped card to front
+  goTo(index)
+
+  // Select/deselect the tapped card
+  const card = store.allCards[index]
+  if (!card) return
+
+  if (store.isCardSelected(card.id)) {
+    store.toggleCardSelection(card.id)
+    return
+  }
+
+  if (!store.canSelectMore) {
+    maxReachedShake.value = true
+    setTimeout(() => { maxReachedShake.value = false }, 400)
+    return
+  }
+
+  store.toggleCardSelection(card.id)
+  tryHaptic()
+}
+
 function tryHaptic() {
   try { navigator.vibrate(10) } catch {}
 }
@@ -124,7 +147,7 @@ const canConfirm = computed(() => store.selectedCount >= 1)
             'is-selected': store.isCardSelected(store.allCards[i].id),
           }"
           :style="cardStyle(i)"
-          @click.stop="activeIndex === i && handleCenterTap()"
+          @click.stop="handleCardTap(i)"
         >
           <div class="card-flipper">
             <!-- FRONT (only face shown during picking) -->

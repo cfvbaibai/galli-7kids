@@ -231,9 +231,11 @@ function checkSlotDrop(card: DragCardState) {
 }
 
 // --- Controls ---
-function flipAll(face: 'front' | 'back') {
+function flipAll() {
+  const frontCount = dragCards.filter(c => !c.flipped).length
+  const toBack = frontCount >= dragCards.length - frontCount
   for (const card of dragCards) {
-    card.flipped = face === 'back'
+    card.flipped = toBack
   }
 }
 
@@ -325,22 +327,13 @@ onMounted(() => {
 
     <!-- Bottom controls -->
     <footer class="controls-bar">
-      <div class="flip-controls">
-        <button
-          class="ctrl-btn"
-          :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
-          @click="flipAll('front')"
-        >
-          全部正面
-        </button>
-        <button
-          class="ctrl-btn"
-          :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
-          @click="flipAll('back')"
-        >
-          全部反面
-        </button>
-      </div>
+      <button
+        class="ctrl-btn"
+        :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
+        @click="flipAll"
+      >
+        全部翻转
+      </button>
       <button
         class="ctrl-btn restart-btn"
         :style="{ color: 'var(--color-text-muted)', background: 'var(--color-surface)' }"
@@ -557,11 +550,6 @@ onMounted(() => {
   padding: 0.75rem 1.25rem 1.25rem;
   background: linear-gradient(to top, var(--app-bg) 60%, transparent);
   backdrop-filter: blur(8px);
-}
-
-.flip-controls {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .ctrl-btn {
