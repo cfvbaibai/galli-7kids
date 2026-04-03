@@ -65,7 +65,7 @@ function calculateLayout() {
 
   // Ellipse: maximize both axes to fill available space
   const rx = (vw - CARD_W) / 2 - 10            // use most horizontal space
-  const ry = availableH / 2 - CARD_H / 2 - 8   // use most vertical space, keep slots on screen
+  const ry = availableH / 2 - CARD_H / 4       // stretch vertically for more row separation
 
   // Ring: 6 characters in 3-row grid around center
   // left column: 吝啬鬼, 自大狂, 暴躁狂 | right column: 睡不醒, 包打听, 多情种
