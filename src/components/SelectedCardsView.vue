@@ -68,7 +68,7 @@ function calculateLayout() {
   const ry = availableH / 2 - CARD_H / 2 - 8   // use most vertical space, keep slots on screen
 
   // Ring: 6 characters arranged as 3x2 grid around center
-  // Layout: top-left=吝啬鬼, top-right=睡不醒, middle-left=自大狂, middle-right=包打听, bottom-left=暴躁狂, bottom-right=多情种
+  // left column: 吝啬鬼, 自大狂, 暴躁狂 | right column: 睡不醒, 包打听, 多情种
   const ringLayout: { char: DarkRoomChild; angle: number }[] = [
     { char: 'miser',       angle: -Math.PI / 2 - Math.PI / 6 },      // top-left
     { char: 'sleepyhead',  angle: -Math.PI / 2 + Math.PI / 6 },      // top-right
