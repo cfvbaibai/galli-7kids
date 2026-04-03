@@ -24,15 +24,16 @@ function checkMobile() {
   isMobile.value = window.innerWidth < 640
 }
 
-// Slot positions for arch layout (percentage-based)
+// Slot positions as 3-row grid (percentage-based)
+// top-left=吝啬鬼, top-right=睡不醒> middle-left=自大狂> center=小不点> middle-right=包打听> bottom-left=暴躁狂> bottom-right=多情种
 const slotPositions: Record<DarkRoomChild, { x: number; y: number }> = {
-  seductress: { x: 12, y: 8 },
-  smallone: { x: 28, y: 4 },
-  sleepyhead: { x: 45, y: 2 },
-  showoff: { x: 62, y: 4 },
-  aggressive: { x: 78, y: 8 },
-  miser: { x: 32, y: 18 },
-  gossip: { x: 58, y: 18 },
+  miser: { x: 22, y: 8 },
+  sleepyhead: { x: 58, y: 8 },
+  showoff: { x: 22, y: 36 },
+  smallone: { x: 40, y: 36 },
+  gossip: { x: 58, y: 36 },
+  aggressive: { x: 22, y: 64 },
+  seductress: { x: 58, y: 64 },
 }
 
 const getSlotStyle = (character: DarkRoomChild) => ({

@@ -67,14 +67,15 @@ function calculateLayout() {
   const rx = (vw - CARD_W) / 2 - 10            // use most horizontal space
   const ry = availableH / 2 - CARD_H / 2 - 8   // use most vertical space, keep slots on screen
 
-  // Ring: 6 characters clockwise from top (matching reference image)
+  // Ring: 6 characters arranged as 3x2 grid around center
+  // Layout: top-left=吝啬鬼, top-right=睡不醒, middle-left=自大狂, middle-right=包打听, bottom-left=暴躁狂, bottom-right=多情种
   const ringLayout: { char: DarkRoomChild; angle: number }[] = [
-    { char: 'sleepyhead',  angle: -Math.PI / 2 },                  // top
-    { char: 'showoff',     angle: -Math.PI / 2 + Math.PI / 3 },    // top-right
-    { char: 'gossip',      angle: -Math.PI / 2 + 2 * Math.PI / 3 },// bottom-right
-    { char: 'seductress',  angle: Math.PI / 2 },                    // bottom
-    { char: 'aggressive',  angle: Math.PI / 2 + Math.PI / 3 },     // bottom-left
-    { char: 'miser',       angle: Math.PI / 2 + 2 * Math.PI / 3 }, // top-left
+    { char: 'miser',       angle: -Math.PI / 2 - Math.PI / 6 },      // top-left
+    { char: 'sleepyhead',  angle: -Math.PI / 2 + Math.PI / 6 },      // top-right
+    { char: 'showoff',     angle: -Math.PI / 6 },                      // middle-left
+    { char: 'gossip',      angle: Math.PI / 6 },                       // middle-right
+    { char: 'aggressive',  angle: Math.PI / 2 - Math.PI / 6 },        // bottom-left
+    { char: 'seductress',  angle: Math.PI / 2 + Math.PI / 6 },        // bottom-right
   ]
 
   const charPos = new Map<DarkRoomChild, { left: number; top: number }>()
