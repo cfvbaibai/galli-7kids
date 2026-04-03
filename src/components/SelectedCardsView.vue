@@ -70,12 +70,12 @@ function calculateLayout() {
   // Ring: 6 characters in 3-row grid around center
   // left column: 吝啬鬼, 自大狂, 暴躁狂 | right column: 睡不醒, 包打听, 多情种
   const ringLayout: { char: DarkRoomChild; angle: number }[] = [
-    { char: 'miser',       angle: -5 * Math.PI / 6 },  // top-left
-    { char: 'sleepyhead',  angle: -Math.PI / 6 },       // top-right
+    { char: 'miser',       angle: -2 * Math.PI / 3 },  // top-left
+    { char: 'sleepyhead',  angle: -Math.PI / 3 },       // top-right
     { char: 'showoff',     angle: Math.PI },             // middle-left
     { char: 'gossip',      angle: 0 },                   // middle-right
-    { char: 'aggressive',  angle: 5 * Math.PI / 6 },    // bottom-left
-    { char: 'seductress',  angle: Math.PI / 6 },         // bottom-right
+    { char: 'aggressive',  angle: 2 * Math.PI / 3 },    // bottom-left
+    { char: 'seductress',  angle: Math.PI / 3 },         // bottom-right
   ]
 
   const charPos = new Map<DarkRoomChild, { left: number; top: number }>()

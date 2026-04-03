@@ -27,13 +27,13 @@ function checkMobile() {
 // Slot positions as 3-row grid (percentage-based)
 // left column: 吝啬鬼, 自大狂, 暴躁狂 | center: 小不点 | right column: 睡不醒, 包打听, 多情种
 const slotPositions: Record<DarkRoomChild, { x: number; y: number }> = {
-  miser: { x: 15, y: 5 },
-  sleepyhead: { x: 65, y: 5 },
+  miser: { x: 22, y: 5 },
+  sleepyhead: { x: 58, y: 5 },
   showoff: { x: 15, y: 42 },
   smallone: { x: 40, y: 42 },
   gossip: { x: 65, y: 42 },
-  aggressive: { x: 15, y: 80 },
-  seductress: { x: 65, y: 80 },
+  aggressive: { x: 22, y: 80 },
+  seductress: { x: 58, y: 80 },
 }
 
 const getSlotStyle = (character: DarkRoomChild) => ({
